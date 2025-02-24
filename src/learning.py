@@ -32,6 +32,18 @@ from grid_world import GridWorld
 from agent import Agent
 from typing import Tuple
 
+def RBF_Q_learning_episode(grid_world: GridWorld = None,
+                           agent: Agent = None,
+                           actions: list = None,
+                           #q_table: np.ndarray = None,
+                           selection_function: callable = None,
+                           function_args: dict = None,
+                           alpha: float = 0.1,
+                           gamma: float = 0.9,
+                           agent_start: Tuple[int,int] = None,
+                           enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False)) -> Tuple[list, float, int, list]:
+    pass
+
 def Q_learning_episode(grid_world: GridWorld = None, 
                agent: Agent = None, 
                actions: list = None,
@@ -324,7 +336,7 @@ def Q_lambda_table_update(state: Tuple[int, ...] = None,
     # Decay eligibility traces
     e_table *= gamma * lambda_
 
-def epsilon_greedy_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1) -> int:
+def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1) -> int:
     """
     Selects an action using the epsilon-greedy policy.
 
@@ -346,4 +358,27 @@ def epsilon_greedy_selection(state: Tuple[int, ...], q_table: np.ndarray = None,
     else:  # Return the action with the highest Q-value
         return np.argmax(q_table[(*state,)])
     
+    pass
+
+def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1, decay: float = 0.99, episode: int = None) -> int:
+    """decaying_epsilon_greedy_Q_selection _summary_
+
+    Args:
+        state (Tuple[int, ...]): _description_
+        q_table (np.ndarray, optional): _description_. Defaults to None.
+        epsilon (float, optional): _description_. Defaults to 0.1.
+        decay (float, optional): _description_. Defaults to 0.99.
+        episode (int, optional): _description_. Defaults to None.
+
+    Returns:
+        int: _description_
+    """
+    if q_table is None:
+        raise ValueError("q_table cannot be None!")
+    if episode is None:
+        raise ValueError("episode cannot be None!")
+    if np.random.rand() < epsilon * decay**episode:
+        return np.random.choice(len(q_table[(*state,)]))
+    else: # Return the action with the highest Q-value
+        return np.argmax(q_table[(*state,)])
     pass

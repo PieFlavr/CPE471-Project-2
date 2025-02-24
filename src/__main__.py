@@ -92,12 +92,12 @@ def main():
                     if algorithm_name == 'Q-Learning':
                         action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(
                             environment, None, actions, q_table, 
-                            epsilon_greedy_selection, {'q_table': q_table, 'epsilon': epsilon},
+                            epsilon_greedy_Q_selection, {'q_table': q_table, 'epsilon': epsilon},
                             alpha, gamma, agent_start, enable_record)
                     elif algorithm_name == 'Q-Lambda':
                         action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(
                             environment, None, actions, q_table, 
-                            epsilon_greedy_selection, {'q_table': q_table, 'epsilon': epsilon},
+                            epsilon_greedy_Q_selection, {'q_table': q_table, 'epsilon': epsilon},
                             alpha, gamma, lambda_value, agent_start, enable_record)
                     
                     training_data.append([action_sequence, total_reward, steps_taken, q_table_history])
