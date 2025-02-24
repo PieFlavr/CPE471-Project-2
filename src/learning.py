@@ -382,3 +382,25 @@ def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndar
     else: # Return the action with the highest Q-value
         return np.argmax(q_table[(*state,)])
     pass
+
+def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau: float = 0.1) -> int:
+    """
+    Selects an action using the softmax policy.
+
+    Args:
+        state (Tuple[int, ...]): The current state of the environment.
+        q_table (np.ndarray, optional): Array of Q-values for each action. Defaults to None.
+        tau (float, optional): Temperature parameter for the softmax function. Defaults to 0.1.
+
+    Returns:
+        int: Index of the selected action.
+    """
+    if q_table is None:
+        raise ValueError("q_table cannot be None!")
+
+    q_values = q_table[(*state, )] # Get the possible Q-values for the current state
+    probabilities = np.exp(q_values / tau) / np.sum(np.exp(q_values / tau)) # Softmax + normalization of possible Q-values
+    print(probabilities)
+    return np.random.choice(len(q_values), p=probabilities) # Return an action based on the probabilities
+
+    pass
