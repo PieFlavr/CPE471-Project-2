@@ -32,6 +32,12 @@ from grid_world import GridWorld
 from agent import Agent
 from typing import Tuple
 
+"""
+====================================================================================================
+EPISODES
+====================================================================================================
+"""
+
 def RBF_Q_learning_episode(grid_world: GridWorld = None,
                            agent: Agent = None,
                            actions: list = None,
@@ -336,6 +342,12 @@ def Q_lambda_table_update(state: Tuple[int, ...] = None,
     # Decay eligibility traces
     e_table *= gamma * lambda_
 
+"""
+====================================================================================================
+SELECTION FUNCTIONS
+====================================================================================================
+"""
+
 def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1) -> int:
     """
     Selects an action using the epsilon-greedy policy.
@@ -404,3 +416,24 @@ def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau:
     return np.random.choice(len(q_values), p=probabilities) # Return an action based on the probabilities
 
     pass
+
+"""
+====================================================================================================
+UTILITIES FUNCTIONS
+====================================================================================================
+"""
+
+def gaussian_RBF(state: Tuple[int, ...], center: Tuple[int, ...], sigma: float = 1.0) -> float:
+    """
+    Computes the resulting Gaussian Radial Basis Function output weight for a given state and center.
+
+    Args:
+        state (Tuple[int, ...]): The current state of the environment.
+        center (Tuple[int, ...]): The center of the RBF.
+        sigma (float, optional): The standard deviation of the RBF. Defaults to 1.0.
+
+    Returns:
+        float: The value of the RBF.
+    """
+    distance = np.linalg.norm(np.array(state) - np.array(center))
+    return np.exp(-distance**2 / (2 * sigma))
