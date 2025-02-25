@@ -41,13 +41,67 @@ EPISODES
 def RBF_Q_learning_episode(grid_world: GridWorld = None,
                            agent: Agent = None,
                            actions: list = None,
-                           #q_table: np.ndarray = None,
+                           p_table: np.ndarray = None,
+                           phi_centers: np.ndarray = None,
+                           sigma: float = 1.0,
                            selection_function: callable = None,
-                           function_args: dict = None,
+                           select_func_args: dict = None,
                            alpha: float = 0.1,
                            gamma: float = 0.9,
                            agent_start: Tuple[int,int] = None,
                            enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False)) -> Tuple[list, float, int, list]:
+    
+    # Check if any of the parameters are None
+    if grid_world is None:
+        raise ValueError("GridWorld cannot be None!")
+    if actions is None:
+        raise ValueError("Actions cannot be None!")
+    if p_table is None:
+        raise ValueError("Q-table cannot be None!")
+    if selection_function is None:
+        raise ValueError("Selection function cannot be None!")
+    if agent is None:
+        grid_world.set_agent(Agent())
+
+    if not callable(selection_function):
+        raise ValueError("Selection function must be callable!")
+    try: 
+        test_state = grid_world.get_state()[1]
+        test_phi_state = np.array([gaussian_RBF(test_state, center, sigma) for center in phi_centers])
+        selection_function(test_state, **select_func_args)
+    except TypeError as e:
+        raise ValueError(f"Selection function arguments are invalid: {e}")
+
+    grid_world.reset(agent_start)  # Initializes the agent and environment state
+
+    action_sequence = []
+    final_p_table = None
+    steps_taken = 0
+    total_reward = 0
+
+    goal_reached = False
+
+    while not goal_reached:
+        state = grid_world.get_state()[1]  # Get the current state of the environment
+        phi_state = np.array([gaussian_RBF(state, center, sigma) for center in phi_centers])
+
+        action = selection_function(phi_state, **select_func_args)
+
+        reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
+
+        action_sequence.append(action) if enable_record[0] else None
+        steps_taken += 1 if enable_record[1] else None
+        total_reward += reward if enable_record[2] else None
+
+        next_state = grid_world.get_state()[1]  # Get the next state of the environment
+        next_phi_state = np.array([gaussian_RBF(next_state, center, sigma) for center in phi_centers])
+
+        Q_learning_RBF_update(phi_state, next_phi_state, action, reward, p_table, alpha, gamma)
+
+    final_p_table = p_table.copy() if enable_record[3] else None
+
+    return action_sequence, total_reward, steps_taken, final_p_table
+
     pass
 
 def Q_learning_episode(grid_world: GridWorld = None, 
@@ -135,57 +189,6 @@ def Q_learning_episode(grid_world: GridWorld = None,
 
     return action_sequence, total_reward, steps_taken, final_q_table
 
-def Q_learning_table_update(state: Tuple[int, ...] = None,
-                           next_state: Tuple[int, ...] = None, 
-                           action: int = None, 
-                           reward: float = None, 
-                           q_table: np.ndarray = None,
-                           alpha: float = 0.1, 
-                           gamma: float = 0.9):
-    """
-    Updates the Q-table using the Q-learning algorithm.
-
-    Args:
-        state (Tuple[int, ...], optional): The current state of the environment. Defaults to None.
-        next_state (Tuple[int, ...], optional): The next state of the environment. Defaults to None.
-        action (int, optional): The action taken by the agent. Defaults to None.
-        reward (float, optional): The reward received after taking the action. Defaults to None.
-        q_table (np.ndarray, optional): Array of Q-values for each state-action pair. Defaults to None.
-        alpha (float, optional): Learning rate. Defaults to 0.1.
-        gamma (float, optional): Discount factor. Defaults to 0.9.
-
-    Raises:
-        ValueError: If q_table is None.
-        ValueError: If state is None.
-        ValueError: If next_state is None.
-        ValueError: If action is None.
-        ValueError: If reward is None.
-    """
-    if q_table is None:
-        raise ValueError("q_table cannot be None!")
-    if state is None:
-        raise ValueError("state cannot be None!")
-    if next_state is None:
-        raise ValueError("next_state cannot be None!")
-    if action is None:
-        raise ValueError("action cannot be None!")
-    if reward is None:
-        raise ValueError("reward cannot be None!")
-    
-    try:
-        q_table[(*state, action)]
-    except TypeError as e:
-        raise ValueError("state and action must be usable to access the q_table!")
-    
-    # Compute the TD error
-    td_error = (reward 
-                + gamma * np.max(q_table[(*next_state, )]) 
-                - q_table[(*state, action)])
-
-    # Update the Q-value for the state-action pair
-    q_table[(*state, action)] = (q_table[(*state, action)] + alpha * (td_error))
-
-    pass
 
 def Q_lambda_episode(grid_world: GridWorld = None, 
                      agent: Agent = None, 
@@ -277,6 +280,64 @@ def Q_lambda_episode(grid_world: GridWorld = None,
 
     return action_sequence, total_reward, steps_taken, final_q_table
 
+"""
+====================================================================================================
+LEARNING UPDATE FUNCTIONS
+====================================================================================================
+"""
+
+def Q_learning_table_update(state: Tuple[int, ...] = None,
+                           next_state: Tuple[int, ...] = None, 
+                           action: int = None, 
+                           reward: float = None, 
+                           q_table: np.ndarray = None,
+                           alpha: float = 0.1, 
+                           gamma: float = 0.9):
+    """
+    Updates the Q-table using the Q-learning algorithm.
+
+    Args:
+        state (Tuple[int, ...], optional): The current state of the environment. Defaults to None.
+        next_state (Tuple[int, ...], optional): The next state of the environment. Defaults to None.
+        action (int, optional): The action taken by the agent. Defaults to None.
+        reward (float, optional): The reward received after taking the action. Defaults to None.
+        q_table (np.ndarray, optional): Array of Q-values for each state-action pair. Defaults to None.
+        alpha (float, optional): Learning rate. Defaults to 0.1.
+        gamma (float, optional): Discount factor. Defaults to 0.9.
+
+    Raises:
+        ValueError: If q_table is None.
+        ValueError: If state is None.
+        ValueError: If next_state is None.
+        ValueError: If action is None.
+        ValueError: If reward is None.
+    """
+    if q_table is None:
+        raise ValueError("q_table cannot be None!")
+    if state is None:
+        raise ValueError("state cannot be None!")
+    if next_state is None:
+        raise ValueError("next_state cannot be None!")
+    if action is None:
+        raise ValueError("action cannot be None!")
+    if reward is None:
+        raise ValueError("reward cannot be None!")
+    
+    try:
+        q_table[(*state, action)]
+    except TypeError as e:
+        raise ValueError("state and action must be usable to access the q_table!")
+    
+    # Compute the TD error
+    td_error = (reward 
+                + gamma * np.max(q_table[(*next_state, )]) 
+                - q_table[(*state, action)])
+
+    # Update the Q-value for the state-action pair
+    q_table[(*state, action)] += alpha * td_error
+
+    pass
+
 def Q_lambda_table_update(state: Tuple[int, ...] = None,
                           next_state: Tuple[int, ...] = None, 
                           action: int = None, 
@@ -342,6 +403,55 @@ def Q_lambda_table_update(state: Tuple[int, ...] = None,
     # Decay eligibility traces
     e_table *= gamma * lambda_
 
+def Q_learning_RBF_update(phi_state: np.ndarray = None,
+                            next_phi_state: np.ndarray = None,
+                            action: int = None,
+                            reward: float = None,
+                            p_table: np.ndarray = None,
+                            alpha: float = 0.1,
+                            gamma: float = 0.9):
+    """
+    Updates the Q-table using the Q-learning algorithm with Radial Basis Function (RBF) approximation.
+
+    Args:
+        phi_state (np.ndarray, optional): Feature vector for the current state. Defaults to None.
+        next_phi_state (np.ndarray, optional): Feature vector for the next state. Defaults to None.
+        action (int, optional): The action taken by the agent. Defaults to None.
+        reward (float, optional): The reward received after taking the action. Defaults to None.
+        p_table (np.ndarray, optional): Array of weights for the RBF approximator. Defaults to None.
+        phi_centers (np.ndarray, optional): Centers of the RBFs. Defaults to None.
+        sigma (float, optional): Standard deviation of the RBFs. Defaults to 1.0.
+        alpha (float, optional): Learning rate. Defaults to 0.1.
+        gamma (float, optional): Discount factor. Defaults to 0.9.
+
+    Raises:
+        ValueError: If phi_state is None.
+        ValueError: If next_phi_state is None.
+        ValueError: If action is None.
+        ValueError: If reward is None.
+        ValueError: If p_table is None.
+        ValueError: If phi_centers is None.
+    """
+    if phi_state is None:
+        raise ValueError("phi_state cannot be None!")
+    if next_phi_state is None:
+        raise ValueError("next_phi_state cannot be None!")
+    if action is None:
+        raise ValueError("action cannot be None!")
+    if reward is None:
+        raise ValueError("reward cannot be None!")
+    if p_table is None:
+        raise ValueError("p_table cannot be None!")
+
+    # Compute the TD error
+    td_error = (reward 
+                + gamma * np.max(np.dot(p_table, next_phi_state)) 
+                - np.dot(p_table[action], phi_state))
+
+    # Update the weights for the action taken
+    p_table[action] += phi_state * alpha * td_error
+
+    pass
 """
 ====================================================================================================
 SELECTION FUNCTIONS
@@ -407,12 +517,34 @@ def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau:
     Returns:
         int: Index of the selected action.
     """
+    if state is None:
+        raise ValueError("state cannot be None!")
     if q_table is None:
         raise ValueError("q_table cannot be None!")
 
     q_values = q_table[(*state, )] # Get the possible Q-values for the current state
     probabilities = np.exp(q_values / tau) / np.sum(np.exp(q_values / tau)) # Softmax + normalization of possible Q-values
     print(probabilities)
+    return np.random.choice(len(q_values), p=probabilities) # Return an action based on the probabilities
+
+    pass
+
+def softmax_P_selection(phi_state: np.ndarray = None, p_table: np.ndarray = None, tau: float = 0.1) -> int:
+    """
+    Selects an action using the softmax policy.
+
+    Args:
+        weight_vector (np.ndarray): The current state of the environment. Defaults to None.
+        p_table (np.ndarray, optional): Array of Q-values of the Phi approximator. Defaults to None.
+        tau (float, optional): Temperature parameter for the softmax function. Defaults to 0.1.
+    """
+    if phi_state is None:
+        raise ValueError("weight_vector cannot be None!")
+    if p_table is None:
+        raise ValueError("p_table cannot be None!")
+
+    q_values = np.dot(p_table, phi_state) # Get the weighted Q-values for the current state
+    probabilities = np.exp(q_values / tau) / np.sum(np.exp(q_values / tau)) # Softmax + normalization of possible Q-values
     return np.random.choice(len(q_values), p=probabilities) # Return an action based on the probabilities
 
     pass
