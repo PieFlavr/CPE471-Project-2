@@ -29,6 +29,23 @@ def main():
         # Agent Possible Actions
         actions = {'up': 0, 'down': 1, 'left': 2, 'right': 3}
 
+        
+        sigma = 1.0 # Sigma value for the RBF function
+        phi_centers_1 = np.array([[math.floor((grid_length/2)+grid_length//4), math.floor((grid_width/2)+grid_width//4)],
+                                 [math.floor((grid_length/2)-grid_length//4), math.floor((grid_width/2)-grid_width//4)],
+                                 [math.floor((grid_length/2)+grid_length//4), math.floor((grid_width/2)-grid_width//4)],
+                                 [math.floor((grid_length/2)-grid_length//4), math.floor((grid_width/2)+grid_width//4)]])
+        phi_centers_2 = np.concatenate((phi_centers_1,
+                                       np.array([[math.floor((grid_length/2)), math.floor((grid_width/2))],
+                                                    [math.floor((grid_length-1)), math.floor((grid_width/2))],
+                                                    [math.floor((grid_length/2)), math.floor((grid_width-1))],
+                                                    [0,math.floor((grid_width/2))],
+                                                    [math.floor((grid_length/2)), 0]]))) 
+        
+        # Persisting Weight Tables (initialized with dummy values as to pass by reference)
+        q_table = np.zeros((grid_length, grid_width, len(actions)), dtype=float)  
+        p_table = np.zeros((len(actions), len(phi_centers_1)), dtype=float)
+
         # Learning Settings
         learning_algorithms = {'Q-Learning': Q_learning_episode, 'Q-Lambda': Q_lambda_episode}
         enable_learning_algorithms = [True, True] # Enable Q-Learning, Q-Lambda, etc...
