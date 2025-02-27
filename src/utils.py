@@ -124,7 +124,7 @@ def plot_action_sequence(action_sequence: list = None,
 
         # There's something ridiculously dumb about FuncAnimation that causes frame 0 to occur twice so needs these checks to not duplicate frames
         if not ((start_frame > num_actions or start_frame > end_frame) or frame_total == 0):
-            print(f"Global Frame {frame} ; Local Frame {start_frame}/{end_frame}: Drawing action sequence...")
+            #print(f"Global Frame {frame} ; Local Frame {start_frame}/{end_frame}: Drawing action sequence...")
             for i in range(start_frame, end_frame):
                 action = action_sequence[i]
                 if action == 0:  # Up
@@ -146,10 +146,10 @@ def plot_action_sequence(action_sequence: list = None,
                 # Ensure the new position is within grid boundaries
                 if (0.5 <= new_x < grid_length + 0.5) and (0.5 <= new_y < grid_width + 0.5):
                     x, y = new_x, new_y
-                    print(f"Frame {start_frame}/{end_frame}:{i}: Successful draw '{action}' arrow draw from ({x - dx}, {y - dy}) to ({x}, {y}).")
+                    #print(f"Frame {start_frame}/{end_frame}:{i}: Successful draw '{action}' arrow draw from ({x - dx}, {y - dy}) to ({x}, {y}).")
                 else:
                     ax.arrow(x, y, dx * 0.25, dy * 0.25, head_width=0.25, head_length=0.25, fc='red', ec='red')
-                    print(f"Frame {start_frame}/{end_frame}:{i}: Invalid move '{action}' to ({new_x}, {new_y}) ignored.")
+                    #print(f"Frame {start_frame}/{end_frame}:{i}: Invalid move '{action}' to ({new_x}, {new_y}) ignored.")
         frame_total += 1
 
     print("Generating action sequence plot...")
@@ -157,7 +157,7 @@ def plot_action_sequence(action_sequence: list = None,
     if fps != 0:
         interval = 1000 / fps  # Calculate interval in milliseconds
         num_frames = (num_actions + max(1, int(fps / base_fps)) - 1) // max(1, int(fps / base_fps))  # Calculate the number of frames needed
-        print(f"Animating action sequence with {num_actions} actions and {num_frames} frames at {fps} FPS or {interval} ms interval.")
+        #print(f"Animating action sequence with {num_actions} actions and {num_frames} frames at {fps} FPS or {interval} ms interval.")
         ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=interval, repeat=False)
     else:
         for i in range(num_actions):

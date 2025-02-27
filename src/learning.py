@@ -56,6 +56,7 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
                            gamma: float = 0.9,
                            agent_start: Tuple[int,int] = None,
                            enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+                           episode: int = None,
                            **kwargs) -> Tuple[list, float, int, list]:
     
     # Check if any of the parameters are None
@@ -69,7 +70,8 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
         raise ValueError("Selection function cannot be None!")
     if agent is None:
         grid_world.set_agent(Agent())
-
+    if episode is None:
+        raise ValueError("Episode cannot be None!")
     if not callable(selection_function):
         raise ValueError("Selection function must be callable!")
     try: 
@@ -92,7 +94,7 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
         state = grid_world.get_state()[1]  # Get the current state of the environment
         phi_state = np.array([gaussian_RBF(state, center, sigma) for center in phi_centers])
 
-        action = selection_function(phi_state, **function_args)
+        action = selection_function(phi_state, episode = episode, **function_args)
 
         reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
 
@@ -111,17 +113,104 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
     return action_sequence, total_reward, steps_taken, final_weights
 
     pass
-
-def Q_learning_episode(grid_world: GridWorld = None, 
+       
+def FSR_Q_learning_episode(grid_world: GridWorld = None, 
                agent: Agent = None, 
                actions: list = None,
-               q_table: np.ndarray = None,
+               weights: np.ndarray = None,
                selection_function: callable = None,
                function_args: dict = None,
                alpha: float = 0.1, 
                gamma: float = 0.9, 
                agent_start: Tuple[int,int] = None,
                enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+               episode: int = None,
+               **kwargs) -> Tuple[list, float, int, list]:
+    """_summary_
+
+    Args:
+        grid_world (GridWorld, optional): _description_. Defaults to None.
+        agent (Agent, optional): _description_. Defaults to None.
+        actions (list, optional): _description_. Defaults to None.
+        fsr (np.ndarray, optional): _description_. Defaults to None.
+        selection_function (callable, optional): _description_. Defaults to None.
+        function_args (dict, optional): _description_. Defaults to None.
+        alpha (float, optional): _description_. Defaults to 0.1.
+        gamma (float, optional): _description_. Defaults to 0.9.
+        agent_start (Tuple[int,int], optional): _description_. Defaults to None.
+        enable_record (Tuple[bool, bool, bool, bool], optional): _description_. Defaults to (False, False, False, False).
+
+    Raises:
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+        ValueError: _description_
+
+    Returns:
+        Tuple[list, float, int, list]: _description_
+    """
+    
+    # Check if any of the parameters are None
+    if grid_world is None:
+        raise ValueError("GridWorld cannot be None!")
+    if actions is None:
+        raise ValueError("Actions cannot be None!")
+    if weights is None:
+        raise ValueError("FSR vector cannot be None!")
+    if selection_function is None:
+        raise ValueError("Selection function cannot be None!")
+    if agent is None:
+        grid_world.set_agent(Agent())
+    if episode is None:
+        raise ValueError("Episode cannot be None!")
+    if not callable(selection_function):
+        raise ValueError("Selection function must be callable!")
+    try: 
+        test_state = grid_world.get_state()[1]
+        selection_function(test_state, **function_args)
+    except TypeError as e:
+        raise ValueError(f"Selection function arguments are invalid: {e}")
+
+    grid_world.reset(agent_start)  # Initializes the agent and environment state
+
+    action_sequence = []
+    final_q_table = None
+    steps_taken = 0
+    total_reward = 0
+
+    goal_reached = False
+
+    while not goal_reached:
+        state = grid_world.get_state()[1]  # Get the current state of the environment
+        action = selection_function(state, episode = episode, **function_args)
+
+        reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
+
+        action_sequence.append(action) if enable_record[0] else None
+        steps_taken += 1 if enable_record[1] else None
+        total_reward += reward if enable_record[2] else None
+
+        next_state = grid_world.get_state()[1]  # Get the next state of the environment
+
+        Q_learning_table_update(state, next_state, action, reward, weights, alpha, gamma)
+
+    final_q_table = weights.copy() if enable_record[3] else None
+
+    return action_sequence, total_reward, steps_taken, final_q_table
+
+def Q_learning_episode(grid_world: GridWorld = None, 
+               agent: Agent = None, 
+               actions: list = None,
+               weights: np.ndarray = None,
+               selection_function: callable = None,
+               function_args: dict = None,
+               alpha: float = 0.1, 
+               gamma: float = 0.9, 
+               agent_start: Tuple[int,int] = None,
+               enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+               episode: int = None,
                **kwargs) -> Tuple[list, float, int, list]:
     """
     Runs a single episode of the Q-learning algorithm.
@@ -131,7 +220,7 @@ def Q_learning_episode(grid_world: GridWorld = None,
         grid_world (GridWorld, optional): The environment in which the agent operates. Defaults to None.
         agent (Agent, optional): The agent that interacts with the environment. Defaults to None.
         actions (list, optional): List of possible actions the agent can take. Defaults to None.
-        q_table (np.ndarray, optional): Q-table used to store and update Q-values. Defaults to None.
+        weights (np.ndarray, optional): Q-table used to store and update Q-values. Defaults to None.
         selection_function (callable, optional): Function used to select actions based on Q-values. Defaults to None.
         function_args (dict, optional): Arguments for the selection function. Defaults to None.
         alpha (float, optional): Learning rate for Q-learning updates. Defaults to 0.1.
@@ -140,7 +229,7 @@ def Q_learning_episode(grid_world: GridWorld = None,
         enable_record (Tuple[bool, bool, bool, bool], optional): Flags to enable recording of action sequence, steps taken, total reward, and Q-table updates. Defaults to (False, False, False, False).
 
     Raises:
-        ValueError: If any of the required parameters (grid_world, actions, q_table, selection_function) are None.
+        ValueError: If any of the required parameters (grid_world, actions, weights, selection_function) are None.
         ValueError: If selection_function is not callable or its arguments are invalid.
 
     Returns:
@@ -156,10 +245,12 @@ def Q_learning_episode(grid_world: GridWorld = None,
         raise ValueError("GridWorld cannot be None!")
     if actions is None:
         raise ValueError("Actions cannot be None!")
-    if q_table is None:
+    if weights is None:
         raise ValueError("Q-table cannot be None!")
     if selection_function is None:
         raise ValueError("Selection function cannot be None!")
+    if episode is None:
+        raise ValueError("Episode cannot be None!")
     if agent is None:
         grid_world.set_agent(Agent())
 
@@ -182,7 +273,7 @@ def Q_learning_episode(grid_world: GridWorld = None,
 
     while not goal_reached:
         state = grid_world.get_state()[1]  # Get the current state of the environment
-        action = selection_function(state, **function_args)
+        action = selection_function(state, episode = episode, **function_args)
 
         reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
 
@@ -192,16 +283,16 @@ def Q_learning_episode(grid_world: GridWorld = None,
 
         next_state = grid_world.get_state()[1]  # Get the next state of the environment
 
-        Q_learning_table_update(state, next_state, action, reward, q_table, alpha, gamma)
+        Q_learning_table_update(state, next_state, action, reward, weights, alpha, gamma)
 
-    final_q_table = q_table.copy() if enable_record[3] else None
+    final_q_table = weights.copy() if enable_record[3] else None
 
     return action_sequence, total_reward, steps_taken, final_q_table
 
 def Q_lambda_episode(grid_world: GridWorld = None, 
                      agent: Agent = None, 
                      actions: list = None,
-                     q_table: np.ndarray = None,
+                     weights: np.ndarray = None,
                      selection_function: callable = None,
                      function_args: dict = None,
                      alpha: float = 0.1, 
@@ -209,6 +300,7 @@ def Q_lambda_episode(grid_world: GridWorld = None,
                      lambda_: float = 0.9, 
                      agent_start: Tuple[int,int] = None,
                      enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+                     episode: int = None,
                      **kwargs) -> Tuple[list, float, int, list]:
     """
     Runs a single episode of the Q(λ) algorithm.
@@ -218,7 +310,7 @@ def Q_lambda_episode(grid_world: GridWorld = None,
         grid_world (GridWorld, optional): The environment in which the agent operates. Defaults to None.
         agent (Agent, optional): The agent that interacts with the environment. Defaults to None.
         actions (list, optional): List of possible actions the agent can take. Defaults to None.
-        q_table (np.ndarray, optional): Q-table used to store and update Q-values. Defaults to None.
+        weights (np.ndarray, optional): Q-table used to store and update Q-values. Defaults to None.
         selection_function (callable, optional): Function used to select actions based on Q-values. Defaults to None.
         function_args (dict, optional): Arguments for the selection function. Defaults to None.
         alpha (float, optional): Learning rate for Q-learning updates. Defaults to 0.1.
@@ -228,7 +320,7 @@ def Q_lambda_episode(grid_world: GridWorld = None,
         enable_record (Tuple[bool, bool, bool, bool], optional): Flags to enable recording of action sequence, steps taken, total reward, and Q-table updates. Defaults to (False, False, False, False).
 
     Raises:
-        ValueError: If any of the required parameters (grid_world, actions, q_table, selection_function) are None.
+        ValueError: If any of the required parameters (grid_world, actions, weights, selection_function) are None.
         ValueError: If selection_function is not callable or its arguments are invalid.
 
     Returns:
@@ -244,13 +336,14 @@ def Q_lambda_episode(grid_world: GridWorld = None,
         raise ValueError("GridWorld cannot be None!")
     if actions is None:
         raise ValueError("Actions cannot be None!")
-    if q_table is None:
+    if weights is None:
         raise ValueError("Q-table cannot be None!")
     if selection_function is None:
         raise ValueError("Selection function cannot be None!")
     if agent is None:
         grid_world.set_agent(Agent())
-
+    if episode is None:
+        raise ValueError("Episode cannot be None!")
     if not callable(selection_function):
         raise ValueError("Selection function must be callable!")
     try: 
@@ -269,11 +362,11 @@ def Q_lambda_episode(grid_world: GridWorld = None,
     goal_reached = False
 
     # Initialize eligibility traces (same shape as Q-table)
-    e_table = np.zeros_like(q_table)
+    e_table = np.zeros_like(weights)
 
     while not goal_reached:
         state = grid_world.get_state()[1] # Get the current state of the environment
-        action = selection_function(state, **function_args)
+        action = selection_function(state, episode = episode, **function_args)
 
         reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
 
@@ -283,9 +376,9 @@ def Q_lambda_episode(grid_world: GridWorld = None,
 
         next_state = grid_world.get_state()[1] # Get the next state of the environment
 
-        Q_lambda_table_update(state, next_state, action, reward, q_table, e_table, alpha, gamma, lambda_)
+        Q_lambda_table_update(state, next_state, action, reward, weights, e_table, alpha, gamma, lambda_)
 
-    final_q_table = q_table.copy() if enable_record[3] else None
+    final_q_table = weights.copy() if enable_record[3] else None
 
     return action_sequence, total_reward, steps_taken, final_q_table
 
@@ -471,7 +564,7 @@ SELECTION FUNCTIONS
 ====================================================================================================
 """
 
-def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1, **kwargs) -> int:
+def epsilon_greedy_Q_selection(state: Tuple[int, ...], weights: np.ndarray = None, epsilon: float = 0.1, **kwargs) -> int:
     """
     Selects an action using the epsilon-greedy policy.
 
@@ -486,16 +579,16 @@ def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = Non
     Returns:
         int: Index of the selected action.
     """
-    if q_table is None:
+    if weights is None:
         raise ValueError("q_table cannot be None!")
     if np.random.rand() < epsilon:
-        return np.random.choice(len(q_table[(*state,)]))  # Return a random action
+        return np.random.choice(len(weights[(*state,)]))  # Return a random action
     else:  # Return the action with the highest Q-value
-        return np.argmax(q_table[(*state,)])
+        return np.argmax(weights[(*state,)])
     
     pass
 
-def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1, decay: float = 0.99, episode: int = None, **kwargs) -> int:
+def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], weights: np.ndarray = None, epsilon: float = 0.1, decay: float = 0.99, episode: int = None, **kwargs) -> int:
     """decaying_epsilon_greedy_Q_selection _summary_
 
     Args:
@@ -508,17 +601,17 @@ def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndar
     Returns:
         int: _description_
     """
-    if q_table is None:
+    if weights is None:
         raise ValueError("q_table cannot be None!")
     if episode is None:
         raise ValueError("episode cannot be None!")
     if np.random.rand() < epsilon * decay**episode:
-        return np.random.choice(len(q_table[(*state,)]))
+        return np.random.choice(len(weights[(*state,)]))
     else: # Return the action with the highest Q-value
-        return np.argmax(q_table[(*state,)])
+        return np.argmax(weights[(*state,)])
     pass
 
-def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau: float = 0.1, **kwargs) -> int:
+def softmax_Q_selection(state: Tuple[int, ...], weights: np.ndarray = None, tau: float = 0.1, greedy_cutoff: int = -1, episode: int = -1, **kwargs) -> int:
     """
     Selects an action using the softmax policy.
 
@@ -532,22 +625,25 @@ def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau:
     """
     if state is None:
         raise ValueError("state cannot be None!")
-    if q_table is None:
+    if weights is None:
         raise ValueError("q_table cannot be None!")
 
-    q_values = q_table[(*state, )] # Get the possible Q-values for the current state
+    if (greedy_cutoff < 0 or episode < greedy_cutoff):
+        q_values = weights[(*state, )] # Get the possible Q-values for the current state
 
-    max_q = np.max(q_values)            # Have to subtract the max value to avoid an INF and NaN crash
-    stable_q_values = q_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
+        max_q = np.max(q_values)            # Have to subtract the max value to avoid an INF and NaN crash
+        stable_q_values = q_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
 
-    exponentiated_vals = np.exp(stable_q_values / tau) # Exponentiate the Q-values
-    probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
-    #print("Probabilities: ", probabilities)
-    return np.random.choice(len(stable_q_values), p=probabilities) # Return an action based on the probabilities
+        exponentiated_vals = np.exp(stable_q_values / tau) # Exponentiate the Q-values
+        probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
+        #print("Probabilities: ", probabilities)
+        return np.random.choice(len(stable_q_values), p=probabilities) # Return an action based on the probabilities
+    elif episode >= greedy_cutoff:
+        return np.argmax(weights[(*state, )])
 
     pass
 
-def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None, tau: float = 0.1, **kwargs) -> int:
+def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None, tau: float = 0.1, greedy_cutoff: int = -1, episode: int = -1, **kwargs) -> int:
     """
     Selects an action using the softmax policy.
 
@@ -561,14 +657,22 @@ def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None
     if weights is None:
         raise ValueError("weights cannot be None!")
 
-    weight_values = np.dot(weights, phi_state) # Get the weighted Q-values for the current state
+    if(greedy_cutoff < 0 or episode < greedy_cutoff): 
+        weight_values = np.dot(weights, phi_state) # Get the weighted Q-values for the current state
 
-    max_q = np.max(weight_values)            # Have to subtract the max value to avoid an INF and NaN crash
-    stable_weights = weight_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
+        max_q = np.max(weight_values)            # Have to subtract the max value to avoid an INF and NaN crash
+        stable_weights = weight_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
 
-    exponentiated_vals = np.exp(stable_weights / tau) # Exponentiate the Q-values
-    probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
-    return np.random.choice(len(stable_weights), p=probabilities) # Return an action based on the probabilities
+        exponentiated_vals = np.exp(stable_weights / tau) # Exponentiate the Q-values
+        probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
+        
+        #print("Non-greedy action: ", np.random.choice(len(stable_weights), p=probabilities))
+
+        return np.random.choice(len(stable_weights), p=probabilities) # Return an action based on the probabilities
+    elif episode >= greedy_cutoff:
+        #print(np.argmax(np.dot(weights, phi_state)))
+        #print("Greedy action: ", np.argmax(np.dot(weights, phi_state)))
+        return np.argmax(np.dot(weights, phi_state))
 
     pass
 
@@ -610,13 +714,23 @@ def generate_RBF_centers(grid_dim: Tuple[int, int] = None, num_centers: int = 10
     rows, cols = grid_dim
     centers = []
 
-    # Calculate the step size for evenly distributing the centers
-    row_step = rows // int(np.sqrt(num_centers))
-    col_step = cols // int(np.sqrt(num_centers))
+    # Recursive function to place centers evenly
+    def place_centers(start_row, end_row, start_col, end_col, remaining_centers):
+        if remaining_centers <= 0 or start_row > end_row or start_col > end_col:
+            return
+        
+        mid_row = round((start_row + end_row) / 2)
+        mid_col = round((start_col + end_col) / 2)
 
-    for i in range(0, rows, row_step):
-        for j in range(0, cols, col_step):
-            if len(centers) < num_centers:
-                centers.append((i, j))
+        centers.append((mid_row, mid_col))
+        remaining_centers -= 1
+
+        if remaining_centers > 0:
+            place_centers(start_row, mid_row - 1, start_col, mid_col - 1, remaining_centers // 4)
+            place_centers(start_row, mid_row - 1, mid_col + 1, end_col, remaining_centers // 4)
+            place_centers(mid_row + 1, end_row, start_col, mid_col - 1, remaining_centers // 4)
+            place_centers(mid_row + 1, end_row, mid_col + 1, end_col, remaining_centers // 4)
+
+    place_centers(1, rows - 2, 1, cols - 2, num_centers)
 
     return np.array(centers)

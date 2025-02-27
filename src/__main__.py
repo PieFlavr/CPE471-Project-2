@@ -44,19 +44,21 @@ def main():
                                                     [0,math.floor((grid_width/2))],
                                                     [math.floor((grid_length/2)), 0]]))) 
         
-        phi_center_N = generate_RBF_centers((grid_length, grid_width), grid_length*grid_width*0.8)
+        phi_center_N = generate_RBF_centers((grid_length, grid_width), grid_length*grid_width*0.5)
 
         #print(f"Phi Centers 1: {phi_centers_1}")
         #print(f"Phi Centers 2: {phi_centers_2}")
-        
+        #print(f"Phi Centers N: {phi_center_N}")
+
         enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
         # Q-learning Settings
-        episodes = 300 # Number of episodes to train the agent
+        episodes = 500 # Number of episodes to train the agent
         alpha = 0.1 # Learning rate, how much the agent learns from new information
         gamma = 0.9 # Discount factor, how much the agent values future rewards
-        epsilon = 0.1 # Exploration rate, how often the agent explores instead of exploiting
+        epsilon = 0.05 # Exploration rate, how often the agent explores instead of exploiting
         tau = 0.1 # Softmax temperature for softmax selection function
+        greedy_cutoff = episodes*(2.0/3.0) # Episode cutoff for gfull reedy selection function
 
         # Q-Lambda Settings (uses ^^^ settings)
         lambda_value = 0.5 # Lambda value for Q-Lambda learning
@@ -87,7 +89,7 @@ def main():
         print(f"Training data will be saved to {save_directory}.")
 
         # Learning Settings
-        enable_learning_algorithms = [True, True, True, True, True] # Enable Q-Learning, Q-Lambda, etc...
+        enable_learning_algorithms = [True, True, True, True, False] # Enable Q-Learning, Q-Lambda, etc...
 
         learning_algorithms = {'Q-Learning': Q_learning_episode, 
                                'Q-Lambda': Q_lambda_episode, 
@@ -103,12 +105,12 @@ def main():
                                         }
         
         global_learning_arguments = {'grid_world': environment, 'actions': actions, 
-                                'q_table': None, 'weights': None,  
+                                'weights': None,  
                                 'selection_function': None, 
-                                'function_args': {'q_table': None, 'weights': None, 'epsilon': epsilon},
+                                'function_args': {'weights': None, 'epsilon': epsilon, 'tau': tau, 'greedy_cutoff': greedy_cutoff},
                                 'alpha': alpha, 'gamma': gamma, 'agent_start': agent_start, 
                                 'lambda': lambda_value, 
-                                'sigma': sigma, 'tau': tau, 
+                                'sigma': sigma,
                                 'enable_record': enable_record}
         
         print("Training agents...")
@@ -131,7 +133,7 @@ def main():
             print(f"Resetting weights for {algorithm_name}...")
             # Initialize Q-table with zeros
             if ('RBF' not in algorithm_name):
-                q_table = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
+                weights = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
             else:
                 weights = np.zeros((len(actions), len(algorithm_exclusive_arguments[algorithm_name]['phi_centers'])), dtype = float)
 
@@ -155,12 +157,8 @@ def main():
                 local_learning_arguments['enable_record'] = enable_record
                 local_learning_arguments.update(algorithm_exclusive_arguments[algorithm_name])
 
-                if 'RBF' not in algorithm_name:
-                    local_learning_arguments['q_table'] = q_table
-                    local_learning_arguments['function_args']['q_table'] = q_table
-                else:   
-                    local_learning_arguments['weights'] = weights
-                    local_learning_arguments['function_args']['weights'] = weights
+                local_learning_arguments['weights'] = weights
+                local_learning_arguments['function_args']['weights'] = weights
 
                 for episode in range(episodes):
                     environment.reset()
@@ -172,7 +170,7 @@ def main():
                     print(f"Training {algorithm_name} agent Episode {episode + 1} of {episodes}...", end=' ')
                     # Run a single episode of the learning algorithm
 
-                    action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(**local_learning_arguments)
+                    action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(episode = episode, **local_learning_arguments)
                     
                     training_data.append([action_sequence, total_reward, steps_taken, q_table_history])
                     print(f"Completed!!! Total Reward: {total_reward}, Steps Taken: {steps_taken}.")
@@ -265,8 +263,8 @@ def main():
                         interpreted_action_sequence_history.append(interpreted_action_sequence)
                     save_training_data_set_to_csv(os.path.join(save_directory, f"interpreted_action_sequence_history_{algorithm_name}.csv"), interpreted_action_sequence_history, "Action Sequence")
         
-        print(global_steps_data)
-        print(global_rewards_data)
+        #print(global_steps_data)
+        #print(global_rewards_data)
 
         # Do global data comparisons
         plot_algorithm_data(global_rewards_data, episodes, 
