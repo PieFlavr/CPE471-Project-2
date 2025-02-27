@@ -18,8 +18,8 @@ def main():
         print("Hello, World!")
         
         # Environment/Grid World Settings
-        grid_length = 5
-        grid_width = 5
+        grid_length = 10
+        grid_width = 10
         reward_vector = [grid_length*grid_width, -1, -5] # In order, the reward for reaching the goal, moving, and an invalid move
         # ^^^ scales dynamically with the grid size
         goal_position = None # If None, default is bottom right corner
@@ -43,23 +43,20 @@ def main():
                                                     [math.floor((grid_length/2)), math.floor((grid_width-1))],
                                                     [0,math.floor((grid_width/2))],
                                                     [math.floor((grid_length/2)), 0]]))) 
-
-        print(f"Phi Centers 1: {phi_centers_1}")
-        print(f"Phi Centers 2: {phi_centers_2}")
         
-        # Persisting Weight Tables (initialized with dummy values as to pass by reference)
-        # q_table = np.zeros((grid_length, grid_width, len(actions)), dtype=float)  
-        # p_weights = np.zeros((len(actions), len(phi_centers_1)), dtype=float)
+        phi_center_N = generate_RBF_centers((grid_length, grid_width), grid_length*grid_width*0.8)
+
+        #print(f"Phi Centers 1: {phi_centers_1}")
+        #print(f"Phi Centers 2: {phi_centers_2}")
+        
         enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
-        enable_learning_algorithms = [False, False, True, True] # Enable Q-Learning, Q-Lambda, etc...
-
         # Q-learning Settings
-        episodes = 100 # Number of episodes to train the agent
+        episodes = 300 # Number of episodes to train the agent
         alpha = 0.1 # Learning rate, how much the agent learns from new information
         gamma = 0.9 # Discount factor, how much the agent values future rewards
         epsilon = 0.1 # Exploration rate, how often the agent explores instead of exploiting
-        tau = 0.1 # Softmax temperature for RBF-Q-Learning
+        tau = 0.1 # Softmax temperature for softmax selection function
 
         # Q-Lambda Settings (uses ^^^ settings)
         lambda_value = 0.5 # Lambda value for Q-Lambda learning
@@ -72,12 +69,15 @@ def main():
         fps = 600 # Frames per second for the plot animation, disables animation at 0
 
         enable_q_table_plots = False # Enable Q-table plots
-        enable_episode_plots = True # Enable episode plots such as rewards/steps over time
+        enable_episode_plots = False # Enable episode plots such as rewards/steps over time
         enable_first_action_sequence_plots = True
         enable_last_action_sequence_plots = True
 
         # Summarize training settings for display purposes
-        training_settings_summary = f"{grid_length}x{grid_width} Grid World\nEpisodes: {episodes}, Alpha: {alpha}, Gamma: {gamma}, Epsilon: {epsilon}\nRewards: {reward_vector}"
+        training_settings_summary = f"{grid_length}x{grid_width} Grid World"
+        training_settings_summary += f"\nEpisodes: {episodes}, Alpha: {alpha}, Gamma: {gamma}, Epsilon: {epsilon}"
+        training_settings_summary += f"\nRewards: {reward_vector}"
+        
         agent_settings_summary = f"Agent Start: (0, 0), Goal: ({grid_length-1}, {grid_width-1})"
         algorithm_settings_summary = None
 
@@ -87,20 +87,24 @@ def main():
         print(f"Training data will be saved to {save_directory}.")
 
         # Learning Settings
+        enable_learning_algorithms = [True, True, False, False, True] # Enable Q-Learning, Q-Lambda, etc...
+
         learning_algorithms = {'Q-Learning': Q_learning_episode, 
                                'Q-Lambda': Q_lambda_episode, 
                                '4RBF-Q-Learning': RBF_Q_learning_episode, 
-                               '9RBF-Q-Learning': RBF_Q_learning_episode}
+                               '9RBF-Q-Learning': RBF_Q_learning_episode,
+                               'NRBF-Q-Learning': RBF_Q_learning_episode}
         
         algorithm_exclusive_arguments = {'Q-Learning': {'selection_function': softmax_Q_selection},
                                         'Q-Lambda': {'selection_function': softmax_Q_selection},
                                         '4RBF-Q-Learning': {'phi_centers': phi_centers_1, 'selection_function': softmax_P_selection},
-                                        '9RBF-Q-Learning': {'phi_centers': phi_centers_2, 'selection_function': softmax_P_selection}
+                                        '9RBF-Q-Learning': {'phi_centers': phi_centers_2, 'selection_function': softmax_P_selection},
+                                        'NRBF-Q-Learning': {'phi_centers': phi_center_N, 'selection_function': softmax_P_selection}
                                         }
         
         global_learning_arguments = {'grid_world': environment, 'actions': actions, 
                                 'q_table': None, 'weights': None,  
-                                'selection_function': epsilon_greedy_Q_selection, 
+                                'selection_function': None, 
                                 'function_args': {'q_table': None, 'weights': None, 'epsilon': epsilon},
                                 'alpha': alpha, 'gamma': gamma, 'agent_start': agent_start, 
                                 'lambda': lambda_value, 
@@ -112,6 +116,15 @@ def main():
         # Ensure the directory exists
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
+        
+        global_rewards_data = {key: None for key in learning_algorithms}
+        global_steps_data = {key: None for key in learning_algorithms}
+
+        """
+        ====================================================================================================
+        MAIN TRAINING LOOP
+        ====================================================================================================
+        """
 
         for algorithm_name, algorithm_function in learning_algorithms.items():
             
@@ -128,14 +141,21 @@ def main():
 
             if enable_learning_algorithms[list(learning_algorithms.keys()).index(algorithm_name)]:
                 print(f"Copying global learning arguments for {algorithm_name}...")
-                algorithm_settings_summary = f"Trained w/ {algorithm_name} and Epsilon-Greedy Selection"
+                algorithm_settings_summary = f"Trained w/ {algorithm_name} and "
+
+                if 'selection_function' in algorithm_exclusive_arguments[algorithm_name]:
+                    algorithm_settings_summary += f"Selection Function: {algorithm_exclusive_arguments[algorithm_name]['selection_function'].__name__}"
+                elif 'selection_function' in global_learning_arguments:
+                    algorithm_settings_summary += f"Selection Function: {global_learning_arguments['selection_function'].__name__}"
+                else:
+                    algorithm_settings_summary += "Unknown Selection Function"
 
                 local_learning_arguments = global_learning_arguments.copy()
 
                 local_learning_arguments['enable_record'] = enable_record
                 local_learning_arguments.update(algorithm_exclusive_arguments[algorithm_name])
 
-                if ('RBF' not in algorithm_name):
+                if 'RBF' not in algorithm_name:
                     local_learning_arguments['q_table'] = q_table
                     local_learning_arguments['function_args']['q_table'] = q_table
                 else:   
@@ -159,11 +179,21 @@ def main():
 
                 print(f"{algorithm_name} Training completed.")
 
+                """
+                ====================================================================================================
+                GRAPHING AND SAVING RESULTS
+                ====================================================================================================
+                """
+
                 # Extract total rewards and steps taken per episode
                 raw_action_sequence_history = [data[0] for data in training_data]
                 q_table_history = [data[3] for data in training_data]
                 total_rewards = [data[1] for data in training_data]
                 steps_taken = [data[2] for data in training_data]
+
+                # Store the training data for each algorithm
+                global_rewards_data[algorithm_name] = copy.deepcopy(total_rewards)
+                global_steps_data[algorithm_name] = copy.deepcopy(steps_taken)
 
                 # Extract the first and last Q-tables
                 first_q_table = training_data[0][3]
@@ -226,10 +256,27 @@ def main():
                     save_training_data_set_to_csv(os.path.join(save_directory, f"q_table_history_{algorithm_name}.csv"), q_table_history, "Q-table")
                     save_training_data_set_to_csv(os.path.join(save_directory, f"raw_action_sequence_history_{algorithm_name}.csv"), raw_action_sequence_history, "Action Sequence")
                     interpreted_action_sequence_history = []
+
                     for action_sequence in raw_action_sequence_history:
                         interpreted_action_sequence = interpret_action_sequence(action_sequence, actions)
                         interpreted_action_sequence_history.append(interpreted_action_sequence)
                     save_training_data_set_to_csv(os.path.join(save_directory, f"interpreted_action_sequence_history_{algorithm_name}.csv"), interpreted_action_sequence_history, "Action Sequence")
+        
+        print(global_steps_data)
+        print(global_rewards_data)
+
+        # Do global data comparisons
+        plot_algorithm_data(global_rewards_data, episodes, 
+                            'Total Rewards per Episode', 
+                            training_settings_summary
+                                + "\n" + agent_settings_summary,
+                                    ylabel='Total Reward', xlabel='Episodes')
+        plot_algorithm_data(global_steps_data, episodes,
+                            'Steps Taken per Episode', 
+                            training_settings_summary
+                                + "\n" + agent_settings_summary,
+                                    ylabel='Steps Taken', xlabel='Episodes')
+
     pass
 
 main()

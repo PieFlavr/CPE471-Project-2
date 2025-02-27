@@ -198,7 +198,6 @@ def Q_learning_episode(grid_world: GridWorld = None,
 
     return action_sequence, total_reward, steps_taken, final_q_table
 
-
 def Q_lambda_episode(grid_world: GridWorld = None, 
                      agent: Agent = None, 
                      actions: list = None,
@@ -593,3 +592,31 @@ def gaussian_RBF(state: Tuple[int, ...], center: Tuple[int, ...], sigma: float =
     """
     distance = np.linalg.norm(np.array(state) - np.array(center))
     return np.exp(-distance**2 / (2 * sigma))
+
+def generate_RBF_centers(grid_dim: Tuple[int, int] = None, num_centers: int = 10) -> np.ndarray:
+    """
+    Generates RBF centers non-randomly by evenly distributing them across the grid.
+
+    Args:
+        grid_dim (Tuple[int, int], optional): Dimensions of the grid (rows, columns). Defaults to None.
+        num_centers (int, optional): Number of RBF centers to generate. Defaults to 10.
+
+    Returns:
+        np.ndarray: Array of RBF centers.
+    """
+    if grid_dim is None:
+        raise ValueError("grid_dim cannot be None!")
+
+    rows, cols = grid_dim
+    centers = []
+
+    # Calculate the step size for evenly distributing the centers
+    row_step = rows // int(np.sqrt(num_centers))
+    col_step = cols // int(np.sqrt(num_centers))
+
+    for i in range(0, rows, row_step):
+        for j in range(0, cols, col_step):
+            if len(centers) < num_centers:
+                centers.append((i, j))
+
+    return np.array(centers)

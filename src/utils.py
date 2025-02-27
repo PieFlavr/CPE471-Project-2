@@ -190,7 +190,11 @@ def plot_q_table(q_table, grid_length, grid_width, actions, title, subtitle=None
         plt.suptitle(subtitle, fontsize=8)
     plt.show()
 
-def plot_episode_data(data, episodes, title, subtitle=None, xlabel='Episode', ylabel='Value', label='Data', color='blue', figsize=(12, 8), fontsize=8):
+def plot_episode_data(data: list, episodes: int,
+                        title: str, subtitle: str = None,
+                        xlabel: str = 'Episode', ylabel: str = 'Value', 
+                        label: str = 'Data', color: str = 'blue', 
+                        figsize: tuple = (12, 8), fontsize: int = 8):
     """
     Plots episode data (e.g., total rewards or steps taken) per episode.
 
@@ -215,6 +219,38 @@ def plot_episode_data(data, episodes, title, subtitle=None, xlabel='Episode', yl
         plt.suptitle(subtitle, fontsize=fontsize)
     plt.legend()
     plt.show()
+
+def plot_algorithm_data(data_dict: dict, episodes: int, 
+                      title: str, subtitle: str = None, 
+                      xlabel: str = 'Episode', ylabel: str = 'Value', 
+                      figsize: tuple = (12, 8), fontsize: int = 8):
+    """
+    Plots multiple sets of episode data (e.g., total rewards or steps taken) per episode.
+
+    Args:
+        data_dict (dict): Dictionary where keys are labels and values are lists of data values per episode.
+        episodes (int): Number of episodes.
+        title (str): Title of the plot.
+        subtitle (str, optional): Subtitle of the plot.
+        xlabel (str, optional): Label for the x-axis. Default is 'Episode'.
+        ylabel (str, optional): Label for the y-axis. Default is 'Value'.
+        figsize (tuple, optional): Size of the figure. Default is (12, 8).
+        fontsize (int, optional): Font size of the subtitle. Default is 8.
+    """
+    plt.figure(figsize=figsize)
+    for label, data in data_dict.items():
+        if(data != None):
+            print(f"Plotting data for {label}... which is {len(data)} long")
+            plt.plot(range(episodes), data, label=label)
+
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    if subtitle:
+        plt.suptitle(subtitle, fontsize=fontsize)
+    plt.legend()
+    plt.show()
+
 
 """
 ====================================================================================================
@@ -271,3 +307,5 @@ def interpret_action_sequence(action_sequence, actions: dict = None) -> list:
         actions = {0: 'up', 1: 'down', 2: 'left', 3: 'right'}
     interpreted_sequence = [get_key_by_value(actions, action) for action in action_sequence]
     return interpreted_sequence
+
+
