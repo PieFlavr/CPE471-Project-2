@@ -89,16 +89,18 @@ def main():
         print(f"Training data will be saved to {save_directory}.")
 
         # Learning Settings
-        enable_learning_algorithms = [True, True, True, True, False] # Enable Q-Learning, Q-Lambda, etc...
+        enable_learning_algorithms = [False, False, True, False, False, False] # Enable Q-Learning, Q-Lambda, etc...
 
         learning_algorithms = {'Q-Learning': Q_learning_episode, 
                                'Q-Lambda': Q_lambda_episode, 
+                               'FSR-Q-Learning': FSR_Q_learning_episode,
                                '4RBF-Q-Learning': RBF_Q_learning_episode, 
                                '9RBF-Q-Learning': RBF_Q_learning_episode,
                                'NRBF-Q-Learning': RBF_Q_learning_episode}
         
         algorithm_exclusive_arguments = {'Q-Learning': {'selection_function': softmax_Q_selection},
                                         'Q-Lambda': {'selection_function': softmax_Q_selection},
+                                        'FSR-Q-Learning': {'selection_function': softmax_FSR_selection},
                                         '4RBF-Q-Learning': {'phi_centers': phi_centers_1, 'selection_function': softmax_P_selection},
                                         '9RBF-Q-Learning': {'phi_centers': phi_centers_2, 'selection_function': softmax_P_selection},
                                         'NRBF-Q-Learning': {'phi_centers': phi_center_N, 'selection_function': softmax_P_selection}
@@ -132,11 +134,12 @@ def main():
             
             print(f"Resetting weights for {algorithm_name}...")
             # Initialize Q-table with zeros
-            if ('RBF' not in algorithm_name):
-                weights = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
-            else:
+            if ('FSR' in algorithm_name):
+                weights = np.zeros(grid_length + grid_width + len(actions), dtype = float)
+            elif('RBF' in algorithm_name):
                 weights = np.zeros((len(actions), len(algorithm_exclusive_arguments[algorithm_name]['phi_centers'])), dtype = float)
-
+            else:
+                weights = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
             training_data = []
             
             enable_record = enable_record_set_1

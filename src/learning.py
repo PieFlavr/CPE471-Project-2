@@ -46,7 +46,7 @@ EPISODES
 
 def RBF_Q_learning_episode(grid_world: GridWorld = None,
                            agent: Agent = None,
-                           actions: list = None,
+                           actions: dict = None,
                            weights: np.ndarray = None,
                            phi_centers: np.ndarray = None,
                            sigma: float = 1.0,
@@ -116,7 +116,7 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
        
 def FSR_Q_learning_episode(grid_world: GridWorld = None, 
                agent: Agent = None, 
-               actions: list = None,
+               actions: dict = None,
                weights: np.ndarray = None,
                selection_function: callable = None,
                function_args: dict = None,
@@ -169,7 +169,7 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
         raise ValueError("Selection function must be callable!")
     try: 
         test_state = grid_world.get_state()[1]
-        selection_function(test_state, **function_args)
+        selection_function(test_state, episode = episode, grid_dims = grid_world._grid_dim, actions = actions, **function_args)
     except TypeError as e:
         raise ValueError(f"Selection function arguments are invalid: {e}")
 
@@ -198,7 +198,7 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
 
         next_fsr_state = generate_next_FSR(next_state, grid_dim = grid_world._grid_dim, actions = actions)
 
-        Q_learing_FSR_update(fsr_state, next_fsr_state, action, reward, weights, alpha, gamma)
+        Q_learing_FSR_update(fsr_state, next_fsr_state, action, actions, reward, weights, alpha, gamma)
 
     final_q_table = weights.copy() if enable_record[3] else None
 
@@ -206,7 +206,7 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
 
 def Q_learning_episode(grid_world: GridWorld = None, 
                agent: Agent = None, 
-               actions: list = None,
+               actions: dict = None,
                weights: np.ndarray = None,
                selection_function: callable = None,
                function_args: dict = None,
@@ -295,7 +295,7 @@ def Q_learning_episode(grid_world: GridWorld = None,
 
 def Q_lambda_episode(grid_world: GridWorld = None, 
                      agent: Agent = None, 
-                     actions: list = None,
+                     actions: dict = None,
                      weights: np.ndarray = None,
                      selection_function: callable = None,
                      function_args: dict = None,
@@ -564,7 +564,7 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
 
 def Q_learing_FSR_update(fsr_state: np.ndarray = None, 
                          next_fsr_states: np.ndarray = None,
-                         action: int = None,
+                         action: int = None, actions: dict = None,
                          reward: float = None,
                          weights: np.ndarray = None,
                          alpha: float = 0.1,
@@ -600,13 +600,16 @@ def Q_learing_FSR_update(fsr_state: np.ndarray = None,
     if weights is None:
         raise ValueError("weights cannot be None!")
 
+    # Compute the Q-values for the  next states
+    next_q_values = np.array([np.dot(weights, next_fsr_states[action]) for action in range(len(actions))])
+
     # Compute the TD error
     td_error = (reward 
-                + gamma * np.max(np.dot(weights, next_fsr_states)) 
-                - np.dot(weights[action], fsr_state))
+                + gamma * np.max(next_q_values) 
+                - np.dot(weights, fsr_state))
 
     # Update the weights for the action taken
-    weights[action] = weights[action] + fsr_state * alpha * td_error
+    weights = weights + fsr_state * alpha * td_error
         
 """
 ====================================================================================================
@@ -727,7 +730,7 @@ def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None
 
 def softmax_FSR_selection(state: Tuple[int, ...] = None, weights: np.ndarray = None, 
                           tau: float = 0.1, greedy_cutoff: int = -1, episode: int = -1, 
-                          grid_dims: Tuple[int, ...] = None, actions: list = None, **kwargs) -> int:
+                          grid_dims: Tuple[int, ...] = None, actions: dict = None, **kwargs) -> int:
     """
     Selects an action using the softmax policy.
 
@@ -743,9 +746,13 @@ def softmax_FSR_selection(state: Tuple[int, ...] = None, weights: np.ndarray = N
         raise ValueError("state cannot be None!")
     if weights is None:
         raise ValueError("q_table cannot be None!")
-    
+    if grid_dims is None:
+        raise ValueError("grid_dims cannot be None!")
+    if actions is None:
+        raise ValueError("actions cannot be None!")
+
     next_FSR_states = generate_next_FSR(state, grid_dim = grid_dims, actions = actions)
-    q_values = np.dot(weights, next_FSR_states) # Get the possible Q-values for the current state
+    q_values = np.array([np.dot(weights, next_FSR_states[action]) for action in range(len(actions))])
 
     if (greedy_cutoff < 0 or episode < greedy_cutoff):
         max_q = np.max(q_values)            # Have to subtract the max value to avoid an INF and NaN crash
@@ -818,7 +825,7 @@ def generate_RBF_centers(grid_dim: Tuple[int, int] = None, num_centers: int = 10
 
     return np.array(centers)
 
-def generate_next_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: list = None) -> np.ndarray:
+def generate_next_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: dict = None) -> np.ndarray:
     """
     Generates all possible Feature State Representation (FSR) vectors for a given state.
 
@@ -839,13 +846,13 @@ def generate_next_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] =
 
     fsr_vectors = []
 
-    for action in actions:
+    for action in range(len(actions)):
         fsr_vector = action_state_to_FSR(state, grid_dim, actions, action)
         fsr_vectors.append(fsr_vector)
 
     return np.array(fsr_vectors)
 
-def action_state_to_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: list = None, action: int = None) -> np.ndarray:
+def action_state_to_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: dict = None, action: int = None) -> np.ndarray:
     """
     Converts a state to a Feature State Representation (FSR) vector.
 
