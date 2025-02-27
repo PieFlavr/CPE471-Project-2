@@ -200,6 +200,7 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
 
     return action_sequence, total_reward, steps_taken, final_q_table
 
+
 def Q_learning_episode(grid_world: GridWorld = None, 
                agent: Agent = None, 
                actions: list = None,
@@ -628,9 +629,9 @@ def softmax_Q_selection(state: Tuple[int, ...], weights: np.ndarray = None, tau:
     if weights is None:
         raise ValueError("q_table cannot be None!")
 
-    if (greedy_cutoff < 0 or episode < greedy_cutoff):
-        q_values = weights[(*state, )] # Get the possible Q-values for the current state
+    q_values = weights[(*state, )] # Get the possible Q-values for the current state
 
+    if (greedy_cutoff < 0 or episode < greedy_cutoff):
         max_q = np.max(q_values)            # Have to subtract the max value to avoid an INF and NaN crash
         stable_q_values = q_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
 
@@ -639,7 +640,7 @@ def softmax_Q_selection(state: Tuple[int, ...], weights: np.ndarray = None, tau:
         #print("Probabilities: ", probabilities)
         return np.random.choice(len(stable_q_values), p=probabilities) # Return an action based on the probabilities
     elif episode >= greedy_cutoff:
-        return np.argmax(weights[(*state, )])
+        return np.argmax(q_values)
 
     pass
 
@@ -657,25 +658,59 @@ def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None
     if weights is None:
         raise ValueError("weights cannot be None!")
 
-    if(greedy_cutoff < 0 or episode < greedy_cutoff): 
-        weight_values = np.dot(weights, phi_state) # Get the weighted Q-values for the current state
+    weight_values = np.dot(weights, phi_state) # Get the weighted Q-values for the current state
 
+    if(greedy_cutoff < 0 or episode < greedy_cutoff):
+        #print("Non-greedy action: ", np.random.choice(len(stable_weights), p=probabilities))
         max_q = np.max(weight_values)            # Have to subtract the max value to avoid an INF and NaN crash
         stable_weights = weight_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
 
         exponentiated_vals = np.exp(stable_weights / tau) # Exponentiate the Q-values
         probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
-        
-        #print("Non-greedy action: ", np.random.choice(len(stable_weights), p=probabilities))
 
         return np.random.choice(len(stable_weights), p=probabilities) # Return an action based on the probabilities
     elif episode >= greedy_cutoff:
         #print(np.argmax(np.dot(weights, phi_state)))
         #print("Greedy action: ", np.argmax(np.dot(weights, phi_state)))
-        return np.argmax(np.dot(weights, phi_state))
+        return np.argmax(weight_values)
 
     pass
 
+def softmax_FSR_selection(state: Tuple[int, ...] = None, weights: np.ndarray = None, 
+                          tau: float = 0.1, greedy_cutoff: int = -1, episode: int = -1, 
+                          grid_dims: Tuple[int, ...] = None, actions: list = None, **kwargs) -> int:
+    """
+    Selects an action using the softmax policy.
+
+    Args:
+        state (Tuple[int, ...]): The current state of the environment.
+        q_table (np.ndarray, optional): Array of Q-values for each action. Defaults to None.
+        tau (float, optional): Temperature parameter for the softmax function. Defaults to 0.1.
+
+    Returns:
+        int: Index of the selected action.
+    """
+    if state is None:
+        raise ValueError("state cannot be None!")
+    if weights is None:
+        raise ValueError("q_table cannot be None!")
+    
+    for action in actions: # Get the FSR for the current state and possible actions
+        next_FSR_states = action_state_to_FSR(state, grid_dims, actions, action)
+    q_values = np.dot(weights, next_FSR_states) # Get the possible Q-values for the current state
+
+    if (greedy_cutoff < 0 or episode < greedy_cutoff):
+        max_q = np.max(q_values)            # Have to subtract the max value to avoid an INF and NaN crash
+        stable_q_values = q_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
+
+        exponentiated_vals = np.exp(stable_q_values / tau) # Exponentiate the Q-values
+        probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
+
+        return np.random.choice(len(stable_q_values), p=probabilities) # Return an action based on the probabilitie
+    elif episode >= greedy_cutoff:
+        return np.argmax(q_values)
+
+    pass
 """
 ====================================================================================================
 UTILITIES FUNCTIONS
@@ -734,3 +769,34 @@ def generate_RBF_centers(grid_dim: Tuple[int, int] = None, num_centers: int = 10
     place_centers(1, rows - 2, 1, cols - 2, num_centers)
 
     return np.array(centers)
+
+def action_state_to_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: list = None, action: int = None) -> np.ndarray:
+    """
+    Converts a state to a Feature State Representation (FSR) vector.
+
+    Args:
+        state (Tuple[int, ...], optional): The current state of the environment. Defaults to None.
+        grid_dim (Tuple[int, int], optional): Dimensions of the grid (rows, columns). Defaults to None.
+        actions (list, optional): List of possible actions. Defaults to None.
+
+    Returns:
+        np.ndarray: The FSR vector for the given state.
+    """
+    if state is None:
+        raise ValueError("state cannot be None!")
+    if grid_dim is None:
+        raise ValueError("grid_dim cannot be None!")
+    if actions is None:
+        raise ValueError("actions cannot be None!")
+    if action is None:
+        raise ValueError("action cannot be None!")
+
+    rows, cols = grid_dim
+    fsr = np.zeros(rows+cols+len(actions), dtype = bool)
+
+    # Each feature vector will be enocded as follows [row_position...col_position...actions...]
+    fsr[state[0]] = 1  # Encode row position
+    fsr[rows + state[1]] = 1  # Encode column position
+    fsr[rows + cols + action] = 1  # Encode action
+
+    return fsr
