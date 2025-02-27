@@ -18,8 +18,8 @@ def main():
         print("Hello, World!")
         
         # Environment/Grid World Settings
-        grid_length = 100
-        grid_width = 100
+        grid_length = 5
+        grid_width = 5
         reward_vector = [grid_length*grid_width, -1, -5] # In order, the reward for reaching the goal, moving, and an invalid move
         # ^^^ scales dynamically with the grid size
         goal_position = None # If None, default is bottom right corner
@@ -35,26 +35,31 @@ def main():
                                  [math.floor((grid_length/2)-grid_length//4), math.floor((grid_width/2)-grid_width//4)],
                                  [math.floor((grid_length/2)+grid_length//4), math.floor((grid_width/2)-grid_width//4)],
                                  [math.floor((grid_length/2)-grid_length//4), math.floor((grid_width/2)+grid_width//4)]])
+
+                                 
         phi_centers_2 = np.concatenate((phi_centers_1,
                                        np.array([[math.floor((grid_length/2)), math.floor((grid_width/2))],
                                                     [math.floor((grid_length-1)), math.floor((grid_width/2))],
                                                     [math.floor((grid_length/2)), math.floor((grid_width-1))],
                                                     [0,math.floor((grid_width/2))],
                                                     [math.floor((grid_length/2)), 0]]))) 
+
+        print(f"Phi Centers 1: {phi_centers_1}")
+        print(f"Phi Centers 2: {phi_centers_2}")
         
         # Persisting Weight Tables (initialized with dummy values as to pass by reference)
-        q_table = np.zeros((grid_length, grid_width, len(actions)), dtype=float)  
-        p_table = np.zeros((len(actions), len(phi_centers_1)), dtype=float)
+        # q_table = np.zeros((grid_length, grid_width, len(actions)), dtype=float)  
+        # p_weights = np.zeros((len(actions), len(phi_centers_1)), dtype=float)
+        enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
-        # Learning Settings
-        learning_algorithms = {'Q-Learning': Q_learning_episode, 'Q-Lambda': Q_lambda_episode}
-        enable_learning_algorithms = [True, True] # Enable Q-Learning, Q-Lambda, etc...
+        enable_learning_algorithms = [False, False, True, True] # Enable Q-Learning, Q-Lambda, etc...
 
         # Q-learning Settings
-        episodes = 10000
-        alpha = 0.15 # Learning rate, how much the agent learns from new information
-        gamma = 0.95 # Discount factor, how much the agent values future rewards
+        episodes = 100 # Number of episodes to train the agent
+        alpha = 0.1 # Learning rate, how much the agent learns from new information
+        gamma = 0.9 # Discount factor, how much the agent values future rewards
         epsilon = 0.1 # Exploration rate, how often the agent explores instead of exploiting
+        tau = 0.1 # Softmax temperature for RBF-Q-Learning
 
         # Q-Lambda Settings (uses ^^^ settings)
         lambda_value = 0.5 # Lambda value for Q-Lambda learning
@@ -64,9 +69,9 @@ def main():
         enable_record_set_2 = [True, True, True, True] # Applies to everything between first and last episode
         
         # Plotting Settings
-        fps = 600000 # Frames per second for the plot animation, disables animation at 0
+        fps = 600 # Frames per second for the plot animation, disables animation at 0
 
-        enable_q_table_plots = True # Enable Q-table plots
+        enable_q_table_plots = False # Enable Q-table plots
         enable_episode_plots = True # Enable episode plots such as rewards/steps over time
         enable_first_action_sequence_plots = True
         enable_last_action_sequence_plots = True
@@ -79,23 +84,64 @@ def main():
         # File Saving Settings
         save_training_data = True # Enable saving of training data
         save_directory = "training_data" # Directory to save the CSV files
+        print(f"Training data will be saved to {save_directory}.")
+
+        # Learning Settings
+        learning_algorithms = {'Q-Learning': Q_learning_episode, 
+                               'Q-Lambda': Q_lambda_episode, 
+                               '4RBF-Q-Learning': RBF_Q_learning_episode, 
+                               '9RBF-Q-Learning': RBF_Q_learning_episode}
+        
+        algorithm_exclusive_arguments = {'Q-Learning': {'selection_function': softmax_Q_selection},
+                                        'Q-Lambda': {'selection_function': softmax_Q_selection},
+                                        '4RBF-Q-Learning': {'phi_centers': phi_centers_1, 'selection_function': softmax_P_selection},
+                                        '9RBF-Q-Learning': {'phi_centers': phi_centers_2, 'selection_function': softmax_P_selection}
+                                        }
+        
+        global_learning_arguments = {'grid_world': environment, 'actions': actions, 
+                                'q_table': None, 'weights': None,  
+                                'selection_function': epsilon_greedy_Q_selection, 
+                                'function_args': {'q_table': None, 'weights': None, 'epsilon': epsilon},
+                                'alpha': alpha, 'gamma': gamma, 'agent_start': agent_start, 
+                                'lambda': lambda_value, 
+                                'sigma': sigma, 'tau': tau, 
+                                'enable_record': enable_record}
+        
+        print("Training agents...")
 
         # Ensure the directory exists
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
 
         for algorithm_name, algorithm_function in learning_algorithms.items():
-
-            algorithm_settings_summary = f"Trained w/ {algorithm_name} and Epsilon-Greedy Selection"
-
+            
+            print(f"Resetting weights for {algorithm_name}...")
             # Initialize Q-table with zeros
-            q_table = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
+            if ('RBF' not in algorithm_name):
+                q_table = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
+            else:
+                weights = np.zeros((len(actions), len(algorithm_exclusive_arguments[algorithm_name]['phi_centers'])), dtype = float)
 
             training_data = []
             
             enable_record = enable_record_set_1
-            
+
             if enable_learning_algorithms[list(learning_algorithms.keys()).index(algorithm_name)]:
+                print(f"Copying global learning arguments for {algorithm_name}...")
+                algorithm_settings_summary = f"Trained w/ {algorithm_name} and Epsilon-Greedy Selection"
+
+                local_learning_arguments = global_learning_arguments.copy()
+
+                local_learning_arguments['enable_record'] = enable_record
+                local_learning_arguments.update(algorithm_exclusive_arguments[algorithm_name])
+
+                if ('RBF' not in algorithm_name):
+                    local_learning_arguments['q_table'] = q_table
+                    local_learning_arguments['function_args']['q_table'] = q_table
+                else:   
+                    local_learning_arguments['weights'] = weights
+                    local_learning_arguments['function_args']['weights'] = weights
+
                 for episode in range(episodes):
                     environment.reset()
                     if (episode == 0) or (episode == episodes - 1):
@@ -105,17 +151,8 @@ def main():
 
                     print(f"Training {algorithm_name} agent Episode {episode + 1} of {episodes}...", end=' ')
                     # Run a single episode of the learning algorithm
-                    action_sequence, total_reward, steps_taken, q_table_history = None, None, None, None
-                    if algorithm_name == 'Q-Learning':
-                        action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(
-                            environment, None, actions, q_table, 
-                            epsilon_greedy_Q_selection, {'q_table': q_table, 'epsilon': epsilon},
-                            alpha, gamma, agent_start, enable_record)
-                    elif algorithm_name == 'Q-Lambda':
-                        action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(
-                            environment, None, actions, q_table, 
-                            epsilon_greedy_Q_selection, {'q_table': q_table, 'epsilon': epsilon},
-                            alpha, gamma, lambda_value, agent_start, enable_record)
+
+                    action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(**local_learning_arguments)
                     
                     training_data.append([action_sequence, total_reward, steps_taken, q_table_history])
                     print(f"Completed!!! Total Reward: {total_reward}, Steps Taken: {steps_taken}.")

@@ -41,22 +41,23 @@ EPISODES
 def RBF_Q_learning_episode(grid_world: GridWorld = None,
                            agent: Agent = None,
                            actions: list = None,
-                           p_table: np.ndarray = None,
+                           weights: np.ndarray = None,
                            phi_centers: np.ndarray = None,
                            sigma: float = 1.0,
                            selection_function: callable = None,
-                           select_func_args: dict = None,
+                           function_args: dict = None,
                            alpha: float = 0.1,
                            gamma: float = 0.9,
                            agent_start: Tuple[int,int] = None,
-                           enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False)) -> Tuple[list, float, int, list]:
+                           enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+                           **kwargs) -> Tuple[list, float, int, list]:
     
     # Check if any of the parameters are None
     if grid_world is None:
         raise ValueError("GridWorld cannot be None!")
     if actions is None:
         raise ValueError("Actions cannot be None!")
-    if p_table is None:
+    if weights is None:
         raise ValueError("Q-table cannot be None!")
     if selection_function is None:
         raise ValueError("Selection function cannot be None!")
@@ -68,14 +69,14 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
     try: 
         test_state = grid_world.get_state()[1]
         test_phi_state = np.array([gaussian_RBF(test_state, center, sigma) for center in phi_centers])
-        selection_function(test_state, **select_func_args)
+        selection_function(test_phi_state, **function_args)
     except TypeError as e:
         raise ValueError(f"Selection function arguments are invalid: {e}")
 
     grid_world.reset(agent_start)  # Initializes the agent and environment state
 
     action_sequence = []
-    final_p_table = None
+    final_weights = None
     steps_taken = 0
     total_reward = 0
 
@@ -85,7 +86,7 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
         state = grid_world.get_state()[1]  # Get the current state of the environment
         phi_state = np.array([gaussian_RBF(state, center, sigma) for center in phi_centers])
 
-        action = selection_function(phi_state, **select_func_args)
+        action = selection_function(phi_state, **function_args)
 
         reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
 
@@ -95,12 +96,13 @@ def RBF_Q_learning_episode(grid_world: GridWorld = None,
 
         next_state = grid_world.get_state()[1]  # Get the next state of the environment
         next_phi_state = np.array([gaussian_RBF(next_state, center, sigma) for center in phi_centers])
+        #print(f"Actual state: {state}, Phi state: {phi_state}, Action: {action}, Reward: {reward}, Next state: {next_state}, Next Phi state: {next_phi_state}")
 
-        Q_learning_RBF_update(phi_state, next_phi_state, action, reward, p_table, alpha, gamma)
+        Q_learning_RBF_update(phi_state, next_phi_state, action, reward, weights, alpha, gamma)
 
-    final_p_table = p_table.copy() if enable_record[3] else None
+    final_weights = weights.copy() if enable_record[3] else None
 
-    return action_sequence, total_reward, steps_taken, final_p_table
+    return action_sequence, total_reward, steps_taken, final_weights
 
     pass
 
@@ -113,7 +115,8 @@ def Q_learning_episode(grid_world: GridWorld = None,
                alpha: float = 0.1, 
                gamma: float = 0.9, 
                agent_start: Tuple[int,int] = None,
-               enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False)) -> Tuple[list, float, int, list]:
+               enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+               **kwargs) -> Tuple[list, float, int, list]:
     """
     Runs a single episode of the Q-learning algorithm.
     Returns a tuple containing the action sequence, total reward, steps taken, and the final Q-table.
@@ -200,7 +203,8 @@ def Q_lambda_episode(grid_world: GridWorld = None,
                      gamma: float = 0.9, 
                      lambda_: float = 0.9, 
                      agent_start: Tuple[int,int] = None,
-                     enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False)) -> Tuple[list, float, int, list]:
+                     enable_record: Tuple[bool, bool, bool, bool] = (False, False, False, False),
+                     **kwargs) -> Tuple[list, float, int, list]:
     """
     Runs a single episode of the Q(λ) algorithm.
     Returns a tuple containing the action sequence, total reward, steps taken, and the final Q-table.
@@ -292,7 +296,8 @@ def Q_learning_table_update(state: Tuple[int, ...] = None,
                            reward: float = None, 
                            q_table: np.ndarray = None,
                            alpha: float = 0.1, 
-                           gamma: float = 0.9):
+                           gamma: float = 0.9,
+                           **kwargs):
     """
     Updates the Q-table using the Q-learning algorithm.
 
@@ -346,7 +351,8 @@ def Q_lambda_table_update(state: Tuple[int, ...] = None,
                           e_table: np.ndarray = None,
                           alpha: float = 0.1, 
                           gamma: float = 0.9,
-                          lambda_: float = 0.9):
+                          lambda_: float = 0.9,
+                          **kwargs):
     """
     Updates the Q-table and eligibility traces using the Q(λ) algorithm.
 
@@ -407,9 +413,10 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
                             next_phi_state: np.ndarray = None,
                             action: int = None,
                             reward: float = None,
-                            p_table: np.ndarray = None,
+                            weights: np.ndarray = None,
                             alpha: float = 0.1,
-                            gamma: float = 0.9):
+                            gamma: float = 0.9,
+                            **kwargs):
     """
     Updates the Q-table using the Q-learning algorithm with Radial Basis Function (RBF) approximation.
 
@@ -418,7 +425,7 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
         next_phi_state (np.ndarray, optional): Feature vector for the next state. Defaults to None.
         action (int, optional): The action taken by the agent. Defaults to None.
         reward (float, optional): The reward received after taking the action. Defaults to None.
-        p_table (np.ndarray, optional): Array of weights for the RBF approximator. Defaults to None.
+        weights (np.ndarray, optional): Array of weights for the RBF approximator. Defaults to None.
         phi_centers (np.ndarray, optional): Centers of the RBFs. Defaults to None.
         sigma (float, optional): Standard deviation of the RBFs. Defaults to 1.0.
         alpha (float, optional): Learning rate. Defaults to 0.1.
@@ -429,7 +436,7 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
         ValueError: If next_phi_state is None.
         ValueError: If action is None.
         ValueError: If reward is None.
-        ValueError: If p_table is None.
+        ValueError: If weights is None.
         ValueError: If phi_centers is None.
     """
     if phi_state is None:
@@ -440,16 +447,16 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
         raise ValueError("action cannot be None!")
     if reward is None:
         raise ValueError("reward cannot be None!")
-    if p_table is None:
-        raise ValueError("p_table cannot be None!")
+    if weights is None:
+        raise ValueError("weights cannot be None!")
 
     # Compute the TD error
     td_error = (reward 
-                + gamma * np.max(np.dot(p_table, next_phi_state)) 
-                - np.dot(p_table[action], phi_state))
+                + gamma * np.max(np.dot(weights, next_phi_state)) 
+                - np.dot(weights[action], phi_state))
 
     # Update the weights for the action taken
-    p_table[action] += phi_state * alpha * td_error
+    weights[action] = weights[action] + phi_state * alpha * td_error
 
     pass
 """
@@ -458,7 +465,7 @@ SELECTION FUNCTIONS
 ====================================================================================================
 """
 
-def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1) -> int:
+def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1, **kwargs) -> int:
     """
     Selects an action using the epsilon-greedy policy.
 
@@ -482,7 +489,7 @@ def epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = Non
     
     pass
 
-def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1, decay: float = 0.99, episode: int = None) -> int:
+def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, epsilon: float = 0.1, decay: float = 0.99, episode: int = None, **kwargs) -> int:
     """decaying_epsilon_greedy_Q_selection _summary_
 
     Args:
@@ -505,7 +512,7 @@ def decaying_epsilon_greedy_Q_selection(state: Tuple[int, ...], q_table: np.ndar
         return np.argmax(q_table[(*state,)])
     pass
 
-def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau: float = 0.1) -> int:
+def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau: float = 0.1, **kwargs) -> int:
     """
     Selects an action using the softmax policy.
 
@@ -523,29 +530,39 @@ def softmax_Q_selection(state: Tuple[int, ...], q_table: np.ndarray = None, tau:
         raise ValueError("q_table cannot be None!")
 
     q_values = q_table[(*state, )] # Get the possible Q-values for the current state
-    probabilities = np.exp(q_values / tau) / np.sum(np.exp(q_values / tau)) # Softmax + normalization of possible Q-values
-    print(probabilities)
-    return np.random.choice(len(q_values), p=probabilities) # Return an action based on the probabilities
+
+    max_q = np.max(q_values)            # Have to subtract the max value to avoid an INF and NaN crash
+    stable_q_values = q_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
+
+    exponentiated_vals = np.exp(stable_q_values / tau) # Exponentiate the Q-values
+    probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
+    #print("Probabilities: ", probabilities)
+    return np.random.choice(len(stable_q_values), p=probabilities) # Return an action based on the probabilities
 
     pass
 
-def softmax_P_selection(phi_state: np.ndarray = None, p_table: np.ndarray = None, tau: float = 0.1) -> int:
+def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None, tau: float = 0.1, **kwargs) -> int:
     """
     Selects an action using the softmax policy.
 
     Args:
-        weight_vector (np.ndarray): The current state of the environment. Defaults to None.
-        p_table (np.ndarray, optional): Array of Q-values of the Phi approximator. Defaults to None.
+        phi_state (np.ndarray): The current state of the environment. Defaults to None.
+        weights (np.ndarray, optional): Array of Q-values of the Phi approximator. Defaults to None.
         tau (float, optional): Temperature parameter for the softmax function. Defaults to 0.1.
     """
     if phi_state is None:
-        raise ValueError("weight_vector cannot be None!")
-    if p_table is None:
-        raise ValueError("p_table cannot be None!")
+        raise ValueError("phi_state cannot be None!")
+    if weights is None:
+        raise ValueError("weights cannot be None!")
 
-    q_values = np.dot(p_table, phi_state) # Get the weighted Q-values for the current state
-    probabilities = np.exp(q_values / tau) / np.sum(np.exp(q_values / tau)) # Softmax + normalization of possible Q-values
-    return np.random.choice(len(q_values), p=probabilities) # Return an action based on the probabilities
+    weight_values = np.dot(weights, phi_state) # Get the weighted Q-values for the current state
+
+    max_q = np.max(weight_values)            # Have to subtract the max value to avoid an INF and NaN crash
+    stable_weights = weight_values - max_q  # i think it doesn't change probabilities? Since they work relative to another anyawy in softmax
+
+    exponentiated_vals = np.exp(stable_weights / tau) # Exponentiate the Q-values
+    probabilities = exponentiated_vals / np.sum(exponentiated_vals) # Softmax + normalization of possible Q-values
+    return np.random.choice(len(stable_weights), p=probabilities) # Return an action based on the probabilities
 
     pass
 
@@ -555,7 +572,7 @@ UTILITIES FUNCTIONS
 ====================================================================================================
 """
 
-def gaussian_RBF(state: Tuple[int, ...], center: Tuple[int, ...], sigma: float = 1.0) -> float:
+def gaussian_RBF(state: Tuple[int, ...], center: Tuple[int, ...], sigma: float = 1.0, **kwargs) -> float:
     """
     Computes the resulting Gaussian Radial Basis Function output weight for a given state and center.
 
