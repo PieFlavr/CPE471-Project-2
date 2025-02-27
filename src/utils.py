@@ -6,10 +6,7 @@ Author: Lucas Pinto
 Date: February 12, 2025
 
 Modules:
-    numpy
-    matplotlib.pyplot
-    matplotlib.animation
-    csv
+    None
 
 Functions:
     get_key_by_value
@@ -22,19 +19,11 @@ Functions:
     interpret_action_sequence
 
 Usage:
-    Import the module and call the desired functions with appropriate arguments.
 """
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import matplotlib.patches as patches
 import csv
-
-"""
-====================================================================================================
-GENERAL UTILITIES
-====================================================================================================
-"""
 
 def get_key_by_value(dictionary, target_value):
     """
@@ -71,16 +60,7 @@ def q_table_to_2d_array(q_table, grid_length, grid_width):
             rows.append(row)
     return np.array(rows)
 
-"""
-====================================================================================================
-PLOTTING UTILITIES
-====================================================================================================
-"""
-
-def plot_action_sequence(action_sequence: list = None, 
-                        grid_length: int = 5, grid_width: int = 5, 
-                        title = None, subtitle = None, fps = 48,
-                        phi_centers: np.ndarray = None):
+def plot_action_sequence(action_sequence, grid_length, grid_width, title, subtitle=None, fps=48):
     """
     Plots the action sequence on a grid with a gradient effect.
 
@@ -99,15 +79,9 @@ def plot_action_sequence(action_sequence: list = None,
     ax.set_yticks(np.arange(0, grid_width, 1))
     ax.grid(True)
 
-    # Drawing Phi centers
-    if phi_centers is not None:
-        for i in range(len(phi_centers)):
-            ax.add_patch(patches.Circle((phi_centers[i][0]+0.5, phi_centers[i][1]+0.5), radius = 2, color='blue', alpha=0.1))
-
     # Initial position
     x, y = 0.5, 0.5
     dx, dy = 0, 0
-    frame_total = 0
     cmap = plt.get_cmap('inferno')  # Colormap for gradient effect
     num_actions = len(action_sequence)
     base_fps = 60
@@ -117,47 +91,43 @@ def plot_action_sequence(action_sequence: list = None,
     ax.plot(x + grid_length - 1, y + grid_width - 1, 'ro', markersize=10, label='Goal')
 
     def update(frame):
-        nonlocal x, y, dx, dy, frame_total
+        nonlocal x, y, dx, dy
         actions_per_frame = max(1, int(fps / base_fps))  # Adjust this value to control how many actions are processed per frame
         start_frame = frame * actions_per_frame
         end_frame = min(start_frame + actions_per_frame, num_actions)
 
-        # There's something ridiculously dumb about FuncAnimation that causes frame 0 to occur twice so needs these checks to not duplicate frames
-        if not ((start_frame > num_actions or start_frame > end_frame) or frame_total == 0):
-            #print(f"Global Frame {frame} ; Local Frame {start_frame}/{end_frame}: Drawing action sequence...")
-            for i in range(start_frame, end_frame):
-                action = action_sequence[i]
-                if action == 0:  # Up
-                    dx, dy = 0, -1
-                elif action == 1:  # Down
-                    dx, dy = 0, 1
-                elif action == 2:  # Left
-                    dx, dy = -1, 0
-                elif action == 3:  # Right
-                    dx, dy = 1, 0
+        for i in range(start_frame, end_frame):
+            action = action_sequence[i]
+            if action == 0:  # Up
+                dx, dy = 0, -1
+            elif action == 1:  # Down
+                dx, dy = 0, 1
+            elif action == 2:  # Left
+                dx, dy = -1, 0
+            elif action == 3:  # Right
+                dx, dy = 1, 0
 
-                color = cmap(i / num_actions)  # Get color from colormap
-                ax.arrow(x, y, dx * 0.75, dy * 0.75, head_width=0.25, head_length=0.25, fc=color, ec=color)
+            color = cmap(i / num_actions)  # Get color from colormap
+            ax.arrow(x, y, dx * 0.75, dy * 0.75, head_width=0.25, head_length=0.25, fc=color, ec=color)
 
-                # Update position with validation
-                new_x = x + dx
-                new_y = y + dy
+            # Update position with validation
+            new_x = x + dx
+            new_y = y + dy
 
-                # Ensure the new position is within grid boundaries
-                if (0.5 <= new_x < grid_length + 0.5) and (0.5 <= new_y < grid_width + 0.5):
-                    x, y = new_x, new_y
-                    #print(f"Frame {start_frame}/{end_frame}:{i}: Successful draw '{action}' arrow draw from ({x - dx}, {y - dy}) to ({x}, {y}).")
-                else:
-                    ax.arrow(x, y, dx * 0.25, dy * 0.25, head_width=0.25, head_length=0.25, fc='red', ec='red')
-                    #print(f"Frame {start_frame}/{end_frame}:{i}: Invalid move '{action}' to ({new_x}, {new_y}) ignored.")
-        frame_total += 1
+            # Ensure the new position is within grid boundaries
+            if (0.5 <= new_x < grid_length + 0.5) and (0.5 <= new_y < grid_width + 0.5):
+                x, y = new_x, new_y
+                #print(f"Frame {i}: Successful draw arrow draw from ({x - dx}, {y - dy}) to ({x}, {y}).")
+            else:
+                ax.arrow(x, y, dx * 0.25, dy * 0.25, head_width=0.25, head_length=0.25, fc='red', ec='red')
+                #print(f"Frame {i}: Invalid move to ({new_x}, {new_y}) ignored.")
 
     print("Generating action sequence plot...")
 
-    if fps != 0:
+    if fps is not 0:
         interval = 1000 / fps  # Calculate interval in milliseconds
         num_frames = (num_actions + max(1, int(fps / base_fps)) - 1) // max(1, int(fps / base_fps))  # Calculate the number of frames needed
-        #print(f"Animating action sequence with {num_actions} actions and {num_frames} frames at {fps} FPS or {interval} ms interval.")
+        print(f"Animating action sequence with {num_actions} actions at {fps} FPS or {interval} ms interval.")
         ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=interval, repeat=False)
     else:
         for i in range(num_actions):
@@ -199,11 +169,7 @@ def plot_q_table(q_table, grid_length, grid_width, actions, title, subtitle=None
         plt.suptitle(subtitle, fontsize=8)
     plt.show()
 
-def plot_episode_data(data: list, episodes: int,
-                        title: str, subtitle: str = None,
-                        xlabel: str = 'Episode', ylabel: str = 'Value', 
-                        label: str = 'Data', color: str = 'blue', 
-                        figsize: tuple = (12, 8), fontsize: int = 8):
+def plot_episode_data(data, episodes, title, subtitle=None, xlabel='Episode', ylabel='Value', label='Data', color='blue', figsize=(12, 8), fontsize=8):
     """
     Plots episode data (e.g., total rewards or steps taken) per episode.
 
@@ -228,43 +194,6 @@ def plot_episode_data(data: list, episodes: int,
         plt.suptitle(subtitle, fontsize=fontsize)
     plt.legend()
     plt.show()
-
-def plot_algorithm_data(data_dict: dict, episodes: int, 
-                      title: str, subtitle: str = None, 
-                      xlabel: str = 'Episode', ylabel: str = 'Value', 
-                      figsize: tuple = (12, 8), fontsize: int = 8):
-    """
-    Plots multiple sets of episode data (e.g., total rewards or steps taken) per episode.
-
-    Args:
-        data_dict (dict): Dictionary where keys are labels and values are lists of data values per episode.
-        episodes (int): Number of episodes.
-        title (str): Title of the plot.
-        subtitle (str, optional): Subtitle of the plot.
-        xlabel (str, optional): Label for the x-axis. Default is 'Episode'.
-        ylabel (str, optional): Label for the y-axis. Default is 'Value'.
-        figsize (tuple, optional): Size of the figure. Default is (12, 8).
-        fontsize (int, optional): Font size of the subtitle. Default is 8.
-    """
-    plt.figure(figsize=figsize)
-    for label, data in data_dict.items():
-        if(data != None):
-            print(f"Plotting data for {label}... which is {len(data)} long")
-            plt.plot(range(episodes), data, label=label)
-
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.title(title)
-    if subtitle:
-        plt.suptitle(subtitle, fontsize=fontsize)
-    plt.legend()
-    plt.show()
-
-"""
-====================================================================================================
-FILE SAVING UTILITIES
-====================================================================================================
-"""
 
 def save_training_data_to_csv(filename, training_data):
     """
@@ -315,4 +244,3 @@ def interpret_action_sequence(action_sequence, actions: dict = None) -> list:
         actions = {0: 'up', 1: 'down', 2: 'left', 3: 'right'}
     interpreted_sequence = [get_key_by_value(actions, action) for action in action_sequence]
     return interpreted_sequence
-
