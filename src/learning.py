@@ -184,7 +184,9 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
 
     while not goal_reached:
         state = grid_world.get_state()[1]  # Get the current state of the environment
-        action = selection_function(state, episode = episode, **function_args)
+        action = selection_function(state, episode = episode, grid_dims = grid_world._grid_dim, actions = actions, **function_args)
+
+        fsr_state = action_state_to_FSR(state, grid_dim = grid_world._grid_dim, actions = actions, action=action)
 
         reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
 
@@ -194,12 +196,13 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
 
         next_state = grid_world.get_state()[1]  # Get the next state of the environment
 
-        Q_learning_table_update(state, next_state, action, reward, weights, alpha, gamma)
+        next_fsr_state = generate_next_FSR(next_state, grid_dim = grid_world._grid_dim, actions = actions)
+
+        Q_learing_FSR_update(fsr_state, next_fsr_state, action, reward, weights, alpha, gamma)
 
     final_q_table = weights.copy() if enable_record[3] else None
 
     return action_sequence, total_reward, steps_taken, final_q_table
-
 
 def Q_learning_episode(grid_world: GridWorld = None, 
                agent: Agent = None, 
@@ -559,6 +562,52 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
 
     pass
 
+def Q_learing_FSR_update(fsr_state: np.ndarray = None, 
+                         next_fsr_states: np.ndarray = None,
+                         action: int = None,
+                         reward: float = None,
+                         weights: np.ndarray = None,
+                         alpha: float = 0.1,
+                         gamma: float = 0.9,
+                         **kwargs):
+    """
+    Updates the Q-table using the Q-learning algorithm with Feature State Representation (FSR).
+
+    Args:
+        fsr_state (np.ndarray, optional): Feature vector for the current state. Defaults to None.
+        next_fsr_state (np.ndarray, optional): Feature vector for the next state. Defaults to None.
+        action (int, optional): The action taken by the agent. Defaults to None.
+        reward (float, optional): The reward received after taking the action. Defaults to None.
+        weights (np.ndarray, optional): Array of weights for the FSR approximator. Defaults to None.
+        alpha (float, optional): Learning rate. Defaults to 0.1.
+        gamma (float, optional): Discount factor. Defaults to 0.9.
+
+    Raises:
+        ValueError: If fsr_state is None.
+        ValueError: If next_fsr_state is None.
+        ValueError: If action is None.
+        ValueError: If reward is None.
+        ValueError: If weights is None.
+    """
+    if fsr_state is None:
+        raise ValueError("fsr_state cannot be None!")
+    if next_fsr_states is None:
+        raise ValueError("next_fsr_states cannot be None!")
+    if action is None:
+        raise ValueError("action cannot be None!")
+    if reward is None:
+        raise ValueError("reward cannot be None!")
+    if weights is None:
+        raise ValueError("weights cannot be None!")
+
+    # Compute the TD error
+    td_error = (reward 
+                + gamma * np.max(np.dot(weights, next_fsr_states)) 
+                - np.dot(weights[action], fsr_state))
+
+    # Update the weights for the action taken
+    weights[action] = weights[action] + fsr_state * alpha * td_error
+        
 """
 ====================================================================================================
 SELECTION FUNCTIONS
@@ -695,8 +744,7 @@ def softmax_FSR_selection(state: Tuple[int, ...] = None, weights: np.ndarray = N
     if weights is None:
         raise ValueError("q_table cannot be None!")
     
-    for action in actions: # Get the FSR for the current state and possible actions
-        next_FSR_states = action_state_to_FSR(state, grid_dims, actions, action)
+    next_FSR_states = generate_next_FSR(state, grid_dim = grid_dims, actions = actions)
     q_values = np.dot(weights, next_FSR_states) # Get the possible Q-values for the current state
 
     if (greedy_cutoff < 0 or episode < greedy_cutoff):
@@ -769,6 +817,33 @@ def generate_RBF_centers(grid_dim: Tuple[int, int] = None, num_centers: int = 10
     place_centers(1, rows - 2, 1, cols - 2, num_centers)
 
     return np.array(centers)
+
+def generate_next_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: list = None) -> np.ndarray:
+    """
+    Generates all possible Feature State Representation (FSR) vectors for a given state.
+
+    Args:
+        state (Tuple[int, ...], optional): The current state of the environment. Defaults to None.
+        grid_dim (Tuple[int, int], optional): Dimensions of the grid (rows, columns). Defaults to None.
+        actions (list, optional): List of possible actions. Defaults to None.
+
+    Returns:
+        np.ndarray: Array of all possible FSR vectors.
+    """
+    if state is None:
+        raise ValueError("state cannot be None!")
+    if grid_dim is None:
+        raise ValueError("grid_dim cannot be None!")
+    if actions is None:
+        raise ValueError("actions cannot be None!")
+
+    fsr_vectors = []
+
+    for action in actions:
+        fsr_vector = action_state_to_FSR(state, grid_dim, actions, action)
+        fsr_vectors.append(fsr_vector)
+
+    return np.array(fsr_vectors)
 
 def action_state_to_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, actions: list = None, action: int = None) -> np.ndarray:
     """
