@@ -6,7 +6,10 @@ Author: Lucas Pinto
 Date: February 12, 2025
 
 Modules:
-    None
+    numpy
+    matplotlib.pyplot
+    matplotlib.animation
+    csv
 
 Functions:
     get_key_by_value
@@ -19,11 +22,18 @@ Functions:
     interpret_action_sequence
 
 Usage:
+    Import the module and call the desired functions with appropriate arguments.
 """
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import csv
+
+"""
+====================================================================================================
+GENERAL UTILITIES
+====================================================================================================
+"""
 
 def get_key_by_value(dictionary, target_value):
     """
@@ -59,6 +69,12 @@ def q_table_to_2d_array(q_table, grid_length, grid_width):
             row = [f"({x},{y})"] + list(q_table[x, y, :])
             rows.append(row)
     return np.array(rows)
+
+"""
+====================================================================================================
+PLOTTING UTILITIES
+====================================================================================================
+"""
 
 def plot_action_sequence(action_sequence, grid_length, grid_width, title, subtitle=None, fps=48):
     """
@@ -199,6 +215,12 @@ def plot_episode_data(data, episodes, title, subtitle=None, xlabel='Episode', yl
         plt.suptitle(subtitle, fontsize=fontsize)
     plt.legend()
     plt.show()
+
+"""
+====================================================================================================
+FILE SAVING UTILITIES
+====================================================================================================
+"""
 
 def save_training_data_to_csv(filename, training_data):
     """

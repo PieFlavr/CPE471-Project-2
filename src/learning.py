@@ -2,7 +2,7 @@
 learning.py
 
 Description: This module implements the Q-learning and Q(lambda) algorithms for a GridWorld environment. 
-            It includes functions for running episodes, selecting actions using an epsilon-greedy policy, and updating the Q-table and eligibility traces.
+            It includes functions for running episodes, selecting actions using various policies, and updating the Q-table and eligibility traces.
 Author: Lucas Pinto
 Date: February 12, 2025
 
@@ -14,11 +14,17 @@ Modules:
     typing - For type hinting.
 
 Functions:
+    RBF_Q_learning_episode - Runs a single episode of the Q-learning algorithm with Radial Basis Function (RBF) approximation.
     Q_learning_episode - Runs a single episode of the Q-learning algorithm.
-    Q_learning_table_update - Updates the Q-table using the Q-learning algorithm.
     Q_lambda_episode - Runs a single episode of the Q(λ) algorithm.
+    Q_learning_table_update - Updates the Q-table using the Q-learning algorithm.
     Q_lambda_table_update - Updates the Q-table and eligibility traces using the Q(λ) algorithm.
-    epsilon_greedy_selection - Selects an action using the epsilon-greedy policy.
+    Q_learning_RBF_update - Updates the Q-table using the Q-learning algorithm with RBF approximation.
+    epsilon_greedy_Q_selection - Selects an action using the epsilon-greedy policy.
+    decaying_epsilon_greedy_Q_selection - Selects an action using the decaying epsilon-greedy policy.
+    softmax_Q_selection - Selects an action using the softmax policy.
+    softmax_P_selection - Selects an action using the softmax policy with RBF approximation.
+    gaussian_RBF - Computes the resulting Gaussian Radial Basis Function output weight for a given state and center.
 
 Usage:
     python main.py
@@ -459,6 +465,7 @@ def Q_learning_RBF_update(phi_state: np.ndarray = None,
     weights[action] = weights[action] + phi_state * alpha * td_error
 
     pass
+
 """
 ====================================================================================================
 SELECTION FUNCTIONS
