@@ -18,8 +18,8 @@ def main():
         print("Hello, World!")
         
         # Environment/Grid World Settings
-        grid_length = 10
-        grid_width = 10
+        grid_length = 5
+        grid_width = 5
         reward_vector = [grid_length*grid_width, -1, -5] # In order, the reward for reaching the goal, moving, and an invalid move
         # ^^^ scales dynamically with the grid size
         goal_position = None # If None, default is bottom right corner
@@ -87,7 +87,7 @@ def main():
         print(f"Training data will be saved to {save_directory}.")
 
         # Learning Settings
-        enable_learning_algorithms = [True, True, False, False, True] # Enable Q-Learning, Q-Lambda, etc...
+        enable_learning_algorithms = [True, True, True, True, True] # Enable Q-Learning, Q-Lambda, etc...
 
         learning_algorithms = {'Q-Learning': Q_learning_episode, 
                                'Q-Lambda': Q_lambda_episode, 
@@ -229,6 +229,7 @@ def main():
                                         + "\n" + algorithm_settings_summary,
                                             ylabel='Steps Taken', label='Steps Taken', color='orange')
 
+                plot_phi_centers = algorithm_exclusive_arguments[algorithm_name]['phi_centers'] if 'phi_centers' in algorithm_exclusive_arguments[algorithm_name] else None
                 if(enable_first_action_sequence_plots):
                     # Plot the first action sequence
                     first_action_sequence = training_data[0][0]
@@ -237,7 +238,8 @@ def main():
                                         (training_settings_summary
                                         + "\n" + agent_settings_summary
                                             + "\n" + algorithm_settings_summary),
-                                            fps=fps)
+                                            fps=fps, 
+                                            phi_centers=plot_phi_centers)
 
                 if(enable_last_action_sequence_plots):
                     # Plot the last action sequence
@@ -247,7 +249,8 @@ def main():
                                         (training_settings_summary
                                         + "\n" + agent_settings_summary
                                             + "\n" + algorithm_settings_summary),
-                                            fps=fps)
+                                            fps=fps,
+                                            phi_centers=plot_phi_centers)
                 
                 if(save_training_data):
                     save_training_data_to_csv(os.path.join(save_directory, f"training_data_{algorithm_name}.csv"), training_data)

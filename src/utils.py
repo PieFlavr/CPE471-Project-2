@@ -27,6 +27,7 @@ Usage:
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib.patches as patches
 import csv
 
 """
@@ -76,7 +77,10 @@ PLOTTING UTILITIES
 ====================================================================================================
 """
 
-def plot_action_sequence(action_sequence, grid_length, grid_width, title, subtitle=None, fps=48):
+def plot_action_sequence(action_sequence: list = None, 
+                        grid_length: int = 5, grid_width: int = 5, 
+                        title = None, subtitle = None, fps = 48,
+                        phi_centers: np.ndarray = None):
     """
     Plots the action sequence on a grid with a gradient effect.
 
@@ -94,6 +98,11 @@ def plot_action_sequence(action_sequence, grid_length, grid_width, title, subtit
     ax.set_xticks(np.arange(0, grid_length, 1))
     ax.set_yticks(np.arange(0, grid_width, 1))
     ax.grid(True)
+
+    # Drawing Phi centers
+    if phi_centers is not None:
+        for i in range(len(phi_centers)):
+            ax.add_patch(patches.Circle((phi_centers[i][0]+0.5, phi_centers[i][1]+0.5), radius = 2, color='blue', alpha=0.1))
 
     # Initial position
     x, y = 0.5, 0.5
@@ -251,7 +260,6 @@ def plot_algorithm_data(data_dict: dict, episodes: int,
     plt.legend()
     plt.show()
 
-
 """
 ====================================================================================================
 FILE SAVING UTILITIES
@@ -307,5 +315,4 @@ def interpret_action_sequence(action_sequence, actions: dict = None) -> list:
         actions = {0: 'up', 1: 'down', 2: 'left', 3: 'right'}
     interpreted_sequence = [get_key_by_value(actions, action) for action in action_sequence]
     return interpreted_sequence
-
 
