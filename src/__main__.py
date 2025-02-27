@@ -26,7 +26,7 @@ def main():
         environment = GridWorld((grid_length, grid_width), goal_position, (grid_length-1, grid_width-1), reward_vector)
         agent_start = (0, 0) # None = random, yet to account for random position in graphing though!
 
-        # Agent Possible Actions
+        # Agent Possible Actions (-/+/-/+)
         actions = {'up': 0, 'down': 1, 'left': 2, 'right': 3}
 
         
@@ -53,7 +53,7 @@ def main():
         enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
         # Q-learning Settings
-        episodes = 500 # Number of episodes to train the agent
+        episodes = 300 # Number of episodes to train the agent
         alpha = 0.1 # Learning rate, how much the agent learns from new information
         gamma = 0.9 # Discount factor, how much the agent values future rewards
         epsilon = 0.05 # Exploration rate, how often the agent explores instead of exploiting
@@ -135,10 +135,14 @@ def main():
             print(f"Resetting weights for {algorithm_name}...")
             # Initialize Q-table with zeros
             if ('FSR' in algorithm_name):
-                weights = np.zeros(grid_length + grid_width + len(actions), dtype = float)
+                print("Initializing FSR-Vector weights...")
+                start_goal_distance = (environment._goal[0]-agent_start[0]) + (environment._goal[1]-agent_start[1])
+                weights = np.zeros(grid_length + grid_width + len(actions) + start_goal_distance, dtype = float)
             elif('RBF' in algorithm_name):
+                print("Initializing RBF-Vector weights...")
                 weights = np.zeros((len(actions), len(algorithm_exclusive_arguments[algorithm_name]['phi_centers'])), dtype = float)
             else:
+                print("Initializing Q-Table weights...")
                 weights = np.zeros((grid_length, grid_width, len(actions)), dtype = float) # Initialize Q-table with zeros
             training_data = []
             
@@ -174,6 +178,7 @@ def main():
                     # Run a single episode of the learning algorithm
 
                     action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(episode = episode, **local_learning_arguments)
+                    print(weights)
                     
                     training_data.append([action_sequence, total_reward, steps_taken, q_table_history])
                     print(f"Completed!!! Total Reward: {total_reward}, Steps Taken: {steps_taken}.")
