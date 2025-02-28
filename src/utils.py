@@ -161,6 +161,8 @@ def plot_action_sequence(action_sequence: list = None,
         ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=interval, repeat=False)
     else:
         for i in range(num_actions):
+            if(i == 0): # Accounting for the goofy fix the first frame being duplicated
+                update(0)
             update(i)
 
     print("Action sequence plot complete.")

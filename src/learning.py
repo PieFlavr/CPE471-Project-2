@@ -32,6 +32,7 @@ Usage:
 
 
 import numpy as np
+import sys
 
 from utils import *
 from grid_world import GridWorld
@@ -169,7 +170,7 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
         raise ValueError("Selection function must be callable!")
     try: 
         test_state = grid_world.get_state()[1]
-        selection_function(test_state, episode = episode, grid_dims = grid_world._grid_dim, goal = grid_world._goal, actions = actions, **function_args)
+        selection_function(test_state, episode = episode, grid_world = grid_world, actions = actions, **function_args)
     except TypeError as e:
         raise ValueError(f"Selection function arguments are invalid: {e}")
 
@@ -184,9 +185,9 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
 
     while not goal_reached:
         state = grid_world.get_state()[1]  # Get the current state of the environment
-        action = selection_function(state, episode = episode, grid_dims = grid_world._grid_dim, goal = grid_world._goal, actions = actions, **function_args)
+        action = selection_function(state, episode = episode, grid_world = grid_world, actions = actions, **function_args)
 
-        fsr_state = action_state_to_FSR(state, grid_dim = grid_world._grid_dim, goal = grid_world._goal, actions = actions, action = action)
+        fsr_state = action_state_to_FSR(state, grid_world = grid_world, actions = actions, action = action)
         #print(f"State: {state}, Action: {action}, I_Action: {get_key_by_value(actions,action)}, FSR: {fsr_state}")
 
         reward, goal_reached = grid_world.step_agent(get_key_by_value(actions, action))
@@ -194,10 +195,11 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
         action_sequence.append(action) if enable_record[0] else None
         steps_taken += 1 if enable_record[1] else None
         total_reward += reward if enable_record[2] else None
+        #print (f"\033[A FSR State: {fsr_state}, Action: {action}, Reward: {reward} \033[A")
 
         next_state = grid_world.get_state()[1]  # Get the next state of the environment
 
-        next_fsr_state = generate_next_FSR(next_state, grid_dim = grid_world._grid_dim, goal = grid_world._goal, actions = actions)
+        next_fsr_state = generate_next_FSR(next_state, grid_world = grid_world, actions = actions)
 
         Q_learning_FSR_update(fsr_state, next_fsr_state, action, actions, reward, weights, alpha, gamma)
 
@@ -610,9 +612,10 @@ def Q_learning_FSR_update(fsr_state: np.ndarray = None,
                 - np.dot(weights, fsr_state))
     
     #print(f"TD error: {td_error}")
-
+    #print(f"Weights Before: {weights}")
     # Update the weights for the action taken
     weights +=  fsr_state * alpha * td_error
+    #print(f"Weights After: {weights}")
 
         
 """
@@ -734,7 +737,7 @@ def softmax_P_selection(phi_state: np.ndarray = None, weights: np.ndarray = None
 
 def softmax_FSR_selection(state: Tuple[int, ...] = None, weights: np.ndarray = None, 
                           tau: float = 0.1, greedy_cutoff: int = -1, episode: int = -1, 
-                          grid_dims: Tuple[int, ...] = None, goal: Tuple[int,...] = None, actions: dict = None, **kwargs) -> int:
+                          grid_world: GridWorld = None, actions: dict = None, **kwargs) -> int:
     """
     Selects an action using the softmax policy.
 
@@ -750,12 +753,11 @@ def softmax_FSR_selection(state: Tuple[int, ...] = None, weights: np.ndarray = N
         raise ValueError("state cannot be None!")
     if weights is None:
         raise ValueError("q_table cannot be None!")
-    if grid_dims is None:
-        raise ValueError("grid_dims cannot be None!")
     if actions is None:
         raise ValueError("actions cannot be None!")
-
-    next_FSR_states = generate_next_FSR(state, grid_dim = grid_dims, goal = goal, actions = actions)
+    if grid_world is None:
+        raise ValueError("grid_world cannot be None!")
+    next_FSR_states = generate_next_FSR(state, grid_world, actions = actions)
     q_values = np.array([np.dot(weights, next_FSR_states[action]) for action in range(len(actions))])
 
     if (greedy_cutoff < 0 or episode < greedy_cutoff):
@@ -829,7 +831,7 @@ def generate_RBF_centers(grid_dim: Tuple[int, int] = None, num_centers: int = 10
 
     return np.array(centers)
 
-def generate_next_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, goal: Tuple[int,int] = None, actions: dict = None) -> np.ndarray:
+def generate_next_FSR(state: Tuple[int, ...] = None, grid_world: GridWorld = None, actions: dict = None) -> np.ndarray:
     """
     Generates all possible Feature State Representation (FSR) vectors for a given state.
 
@@ -843,22 +845,20 @@ def generate_next_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] =
     """
     if state is None:
         raise ValueError("state cannot be None!")
-    if grid_dim is None:
-        raise ValueError("grid_dim cannot be None!")
     if actions is None:
         raise ValueError("actions cannot be None!")
-    if goal is None:
-        raise ValueError("goal cannot be None!")
+    if grid_world is None:
+        raise ValueError("grid_world cannot be None!")
 
     fsr_vectors = []
 
     for action in range(len(actions)):
-        fsr_vector = action_state_to_FSR(state, grid_dim, goal, actions, action)
+        fsr_vector = action_state_to_FSR(state, grid_world, actions, action)
         fsr_vectors.append(fsr_vector)
 
     return np.array(fsr_vectors)
 
-def action_state_to_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int] = None, goal: Tuple[int,int] = None, actions: dict = None, action: int = None) -> np.ndarray:
+def action_state_to_FSR(state: Tuple[int, ...] = None, grid_world: GridWorld = None, actions: dict = None, action: int = None) -> np.ndarray:
     """
     Converts a state to a Feature State Representation (FSR) vector.
 
@@ -872,24 +872,29 @@ def action_state_to_FSR(state: Tuple[int, ...] = None, grid_dim: Tuple[int, int]
     """
     if state is None:
         raise ValueError("state cannot be None!")
-    if grid_dim is None:
-        raise ValueError("grid_dim cannot be None!")
     if actions is None:
         raise ValueError("actions cannot be None!")
     if action is None:
         raise ValueError("action cannot be None!")
-    if goal is None:
-        raise ValueError("goal cannot be None!")
+    if grid_world is None:
+        raise ValueError("grid_world cannot be None!")
 
-    rows, cols = grid_dim
-    start_goal_distance = (rows - 1) + (cols - 1)
-    fsr = np.zeros(rows+cols+len(actions)+start_goal_distance, dtype = int)
-    distance_to_goal = (goal[0] - state[0]) + (goal[1] - state[1]) -1
+    rows, cols = grid_world._grid_dim
 
+    #start_goal_distance = goal[0] + goal[1]
+    #distance_to_goal = (goal[0] - state[0]) + (goal[1] - state[1]) -1
+    #start_goal_distance = 0
+    #distance_to_goal = 0
+
+    #fsr = np.zeros(rows+cols+len(actions)+start_goal_distance, dtype = int)
+    #fsr = np.zeros(rows*cols*len(actions), dtype = int)
+    fsr = np.zeros((rows + cols) * len(actions))
+    
     # Each feature vector will be enocded as follows [row_position...col_position...actions...]
-    fsr[state[0]] = 1  # Encode row position
-    fsr[rows + state[1]] = 1  # Encode column position
-    fsr[rows + cols + action] = 1  # Encode action
-    fsr[rows + cols + len(actions) + distance_to_goal] = 1  # Encode distance to goal
+    action_offset = (rows + cols) * action
+    fsr[action_offset + state[0]] = 1  # Encode row position
+    fsr[action_offset + rows + state[1]] = 1  # Encode column position
+    
+    #fsr[rows + cols + len(actions) + distance_to_goal] = 1  # Encode distance to goal
 
     return fsr
