@@ -32,7 +32,6 @@ Usage:
 
 
 import numpy as np
-import sys
 
 from utils import *
 from grid_world import GridWorld
