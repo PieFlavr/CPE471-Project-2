@@ -88,6 +88,7 @@ def main():
 
         # File Saving Settings
         save_training_data = True # Enable saving of training data
+        save_graphs = True # Enable saving of graphs
         save_directory = "training_data" # Directory to save the CSV files
         print(f"Training data will be saved to {save_directory}.")
 
@@ -267,7 +268,8 @@ def main():
                                         + "\n" + algorithm_settings_summary),
                                         fps=fps, 
                                         phi_centers=plot_phi_centers)
-                ffig_action_sequence.savefig(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.png"))
+                if(save_graphs):
+                    ffig_action_sequence.savefig(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.png"))
 
             if(enable_last_action_sequence_plots):
                 # Plot the last action sequence
@@ -279,7 +281,8 @@ def main():
                                         + "\n" + algorithm_settings_summary),
                                         fps=fps,
                                         phi_centers=plot_phi_centers)
-                lfig_action_sequence.savefig(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.png"))
+                if(save_graphs):
+                    lfig_action_sequence.savefig(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.png"))
 
             if(save_training_data):
                 print(f"Saving training data for {algorithm_name}...")
@@ -310,8 +313,9 @@ def main():
                                 + "\n" + agent_settings_summary,
                                     ylabel='Steps Taken', xlabel='Episodes')
 
-        fig_total_reward.savefig(os.path.join(save_directory, "total_rewards_comparison.png"))
-        fig_steps_taken.savefig(os.path.join(save_directory, "steps_taken_comparison.png"))
+        if save_graphs:
+            fig_total_reward.savefig(os.path.join(save_directory, "total_rewards_comparison.png"))
+            fig_steps_taken.savefig(os.path.join(save_directory, "steps_taken_comparison.png"))
 
         plt.show(block=True)
 
