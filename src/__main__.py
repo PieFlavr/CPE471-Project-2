@@ -53,7 +53,7 @@ def main():
         enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
         # Q-learning Settings
-        episodes = 300 # Number of episodes to train the agent
+        episodes = 200 # Number of episodes to train the agent
         alpha = 0.15 # Learning rate, how much the agent learns from new information
         gamma = 0.9 # Discount factor, how much the agent values future rewards
         epsilon = 0.05 # Exploration rate, how often the agent explores instead of exploiting
@@ -62,7 +62,7 @@ def main():
         #greedy_cutoff = -1 #No Greedy Cutoff
 
         # Q-Lambda Settings (uses ^^^ settings)
-        lambda_value = 0.5 # Lambda value for Q-Lambda learning
+        lambda_ = 0.5 # Lambda value for Q-Lambda learning
 
         # Enable recording of action sequence, total rewards, steps taken, and Q-table history
         enable_record_set_1 = [True, True, True, True] # Applies to first and last episode
@@ -73,7 +73,7 @@ def main():
 
         enable_q_table_plots = False # Enable Q-table plots
         enable_episode_plots = False # Enable episode plots such as rewards/steps over time
-        enable_first_action_sequence_plots = True 
+        enable_first_action_sequence_plots = False 
         enable_last_action_sequence_plots = True
 
         # Summarize training settings for display purposes
@@ -81,7 +81,7 @@ def main():
         training_settings_summary += f"\nEpisodes: {episodes} "
         training_settings_summary += f"Alpha: {alpha}, Gamma: {gamma}, "
         training_settings_summary += f"Epsilon: {epsilon}, Tau: {tau} "
-        training_settings_summary += f"Lambda: {lambda_value}, Sigma: {sigma} "
+        training_settings_summary += f"Lambda: {lambda_}, Sigma: {sigma} "
         agent_settings_summary = f"Agent Start: (0, 0), Goal: ({goal_position[0]}, {goal_position[1]}) "
         agent_settings_summary += f"Rewards: {reward_vector}"
         algorithm_settings_summary = None
@@ -94,22 +94,28 @@ def main():
         learning_algorithms = {
                                 'Q-Learning': Q_learning_episode, 
                                 'Q-Lambda': Q_lambda_episode, 
-                                'FSR-Q-Learning': FSR_Q_learning_episode,
-                                #'FSR-Q-Learning_Alt': FSR_Q_learning_episode,
-                                #'FSR-Q-Learning_Alt2': FSR_Q_learning_episode,
-                                '4RBF-Q-Learning': RBF_Q_learning_episode, 
-                                '9RBF-Q-Learning': RBF_Q_learning_episode,
-                                #'NRBF-Q-Learning': RBF_Q_learning_episode
+                                'Q-Lambda_Alt': Q_lambda_episode,
+                                'Q-Lambda_Alt2': Q_lambda_episode,
+                                'Q-Lambda_Alt3': Q_lambda_episode,
+                                #'FSR-Q-Learning': FSR_Q_learning_episode,
+                                ##'FSR-Q-Learning_Alt': FSR_Q_learning_episode,
+                                ##'FSR-Q-Learning_Alt2': FSR_Q_learning_episode,
+                                #'4RBF-Q-Learning': RBF_Q_learning_episode, 
+                                #'9RBF-Q-Learning': RBF_Q_learning_episode,
+                                ##'NRBF-Q-Learning': RBF_Q_learning_episode
                                 }
         
         algorithm_exclusive_arguments = {
                                         'Q-Learning': {'selection_function': softmax_Q_selection},
                                         'Q-Lambda': {'selection_function': softmax_Q_selection},
+                                        'Q-Lambda_Alt': {'selection_function': softmax_Q_selection},
+                                        'Q-Lambda_Alt2': {'selection_function': softmax_Q_selection},
+                                        'Q-Lambda_Alt3': {'selection_function': softmax_Q_selection},
                                         'FSR-Q-Learning': {'selection_function': softmax_FSR_selection},
-                                        #'FSR-Q-Learning_Alt': {'selection_function': softmax_FSR_selection,'alpha': 0.01, 'gamma': 0.99}, 
+                                        ##'FSR-Q-Learning_Alt': {'selection_function': softmax_FSR_selection,'alpha': 0.01, 'gamma': 0.99}, 
                                         '4RBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_centers_1},
                                         '9RBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_centers_2},
-                                        'NRBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_center_N}
+                                        ##'NRBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_center_N}
                                         }
         
         global_learning_arguments = {'grid_world': environment, 'actions': actions, 
@@ -117,7 +123,7 @@ def main():
                                 'selection_function': softmax_FSR_selection, 
                                 'function_args': {'weights': None, 'epsilon': epsilon, 'tau': tau, 'greedy_cutoff': greedy_cutoff},
                                 'alpha': alpha, 'gamma': gamma, 'agent_start': agent_start, 
-                                'lambda': lambda_value, 
+                                'lambda_': lambda_, 
                                 'sigma': sigma, 'phi_centers': phi_center_N,
                                 'enable_record': enable_record
                                 }
@@ -254,25 +260,27 @@ def main():
             if(enable_first_action_sequence_plots):
                 # Plot the first action sequence
                 first_action_sequence = training_data[0][0]
-                plot_action_sequence(first_action_sequence, grid_length, grid_width, 
+                ffig_action_sequence = plot_action_sequence(first_action_sequence, grid_length, grid_width, 
                                     'First Action Sequence', 
                                     (training_settings_summary
                                     + "\n" + agent_settings_summary
                                         + "\n" + algorithm_settings_summary),
                                         fps=fps, 
                                         phi_centers=plot_phi_centers)
+                ffig_action_sequence.savefig(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.png"))
 
             if(enable_last_action_sequence_plots):
                 # Plot the last action sequence
                 last_action_sequence = training_data[-1][0]
-                plot_action_sequence(last_action_sequence, grid_length, grid_width, 
+                lfig_action_sequence = plot_action_sequence(last_action_sequence, grid_length, grid_width, 
                                     'Last Action Sequence', 
                                     (training_settings_summary
                                     + "\n" + agent_settings_summary
                                         + "\n" + algorithm_settings_summary),
                                         fps=fps,
                                         phi_centers=plot_phi_centers)
-            
+                lfig_action_sequence.savefig(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.png"))
+
             if(save_training_data):
                 print(f"Saving training data for {algorithm_name}...")
                 save_training_data_to_csv(os.path.join(save_directory, f"training_data_{algorithm_name}.csv"), training_data)
@@ -291,16 +299,21 @@ def main():
         #print(global_rewards_data)
 
         # Do global data comparisons
-        plot_algorithm_data(global_rewards_data, episodes, 
+        fig_total_reward = plot_algorithm_data(global_rewards_data, episodes, 
                             'Total Rewards per Episode', 
                             training_settings_summary
                                 + "\n" + agent_settings_summary,
                                     ylabel='Total Reward', xlabel='Episodes')
-        plot_algorithm_data(global_steps_data, episodes,
+        fig_steps_taken = plot_algorithm_data(global_steps_data, episodes,
                             'Steps Taken per Episode', 
                             training_settings_summary
                                 + "\n" + agent_settings_summary,
                                     ylabel='Steps Taken', xlabel='Episodes')
+
+        fig_total_reward.savefig(os.path.join(save_directory, "total_rewards_comparison.png"))
+        fig_steps_taken.savefig(os.path.join(save_directory, "steps_taken_comparison.png"))
+
+        plt.show(block=True)
 
     pass
 

@@ -30,6 +30,7 @@ import matplotlib.animation as animation
 import matplotlib.patches as patches
 import csv
 
+
 """
 ====================================================================================================
 GENERAL UTILITIES
@@ -84,7 +85,7 @@ PLOTTING UTILITIES
 def plot_action_sequence(action_sequence: list = None, 
                         grid_length: int = 5, grid_width: int = 5, 
                         title = None, subtitle = None, fps = 48,
-                        phi_centers: np.ndarray = None):
+                        phi_centers: np.ndarray = None) -> plt.Figure:
     """
     Plots the action sequence on a grid with a gradient effect.
 
@@ -175,9 +176,10 @@ def plot_action_sequence(action_sequence: list = None,
     plt.suptitle(subtitle, fontsize=8)
     plt.gca().invert_yaxis()
     plt.legend()
-    plt.show()
 
-def plot_q_table(q_table, grid_length, grid_width, actions, title, subtitle=None, figsize=(12, 8), font_size=10, scale=(1.2, 1.2)):
+    return fig
+
+def plot_q_table(q_table, grid_length, grid_width, actions, title, subtitle=None, figsize=(12, 8), font_size=10, scale=(1.2, 1.2)) -> plt.Figure:
     """
     Plots a Q-table as a 2D table.
 
@@ -203,13 +205,14 @@ def plot_q_table(q_table, grid_length, grid_width, actions, title, subtitle=None
     plt.title(title)
     if subtitle:
         plt.suptitle(subtitle, fontsize=8)
-    plt.show()
+
+    return fig
 
 def plot_episode_data(data: list, episodes: int,
                         title: str, subtitle: str = None,
                         xlabel: str = 'Episode', ylabel: str = 'Value', 
                         label: str = 'Data', color: str = 'blue', 
-                        figsize: tuple = (12, 8), fontsize: int = 8):
+                        figsize: tuple = (12, 8), fontsize: int = 8) -> plt.Figure:
     """
     Plots episode data (e.g., total rewards or steps taken) per episode.
 
@@ -225,7 +228,7 @@ def plot_episode_data(data: list, episodes: int,
         figsize (tuple, optional): Size of the figure. Default is (12, 8).
         fontsize (int, optional): Font size of the subtitle. Default is 8.
     """
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
     plt.plot(range(episodes), data, label=label, color=color)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -233,7 +236,8 @@ def plot_episode_data(data: list, episodes: int,
     if subtitle:
         plt.suptitle(subtitle, fontsize=fontsize)
     plt.legend()
-    plt.show()
+
+    return fig
 
 def plot_algorithm_data(data_dict: dict, episodes: int, 
                       title: str, subtitle: str = None, 
@@ -252,7 +256,7 @@ def plot_algorithm_data(data_dict: dict, episodes: int,
         figsize (tuple, optional): Size of the figure. Default is (12, 8).
         fontsize (int, optional): Font size of the subtitle. Default is 8.
     """
-    plt.figure(figsize=figsize)
+    fig = plt.figure(figsize=figsize)
     for label, data in data_dict.items():
         if(data != None):
             print(f"Plotting data for {label}... which is {len(data)} long")
@@ -264,7 +268,8 @@ def plot_algorithm_data(data_dict: dict, episodes: int,
     if subtitle:
         plt.suptitle(subtitle, fontsize=fontsize)
     plt.legend()
-    plt.show()
+    
+    return fig
 
 """
 ====================================================================================================
