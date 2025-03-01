@@ -69,7 +69,7 @@ def main():
         enable_record_set_2 = [True, True, True, True] # Applies to everything between first and last episode
         
         # Plotting Settings
-        fps = 60 # Frames per second for the plot animation, disables animation at 0
+        fps = 0 # Frames per second for the plot animation, disables animation at 0
 
         enable_q_table_plots = False # Enable weights plots
         enable_episode_plots = False # Enable individual episode plots such as rewards/steps over time
@@ -95,14 +95,14 @@ def main():
         learning_algorithms = {
                                 'Q-Learning': Q_learning_episode, 
                                 'Q-Lambda': Q_lambda_episode, 
-                                'Q-Lambda_Alt': Q_lambda_episode,
-                                'Q-Lambda_Alt2': Q_lambda_episode,
-                                'Q-Lambda_Alt3': Q_lambda_episode,
-                                #'FSR-Q-Learning': FSR_Q_learning_episode,
+                                ##'Q-Lambda_Alt': Q_lambda_episode,
+                                ###'Q-Lambda_Alt2': Q_lambda_episode,
+                                ####'Q-Lambda_Alt3': Q_lambda_episode,
+                                'FSR-Q-Learning': FSR_Q_learning_episode,
                                 ##'FSR-Q-Learning_Alt': FSR_Q_learning_episode,
-                                ##'FSR-Q-Learning_Alt2': FSR_Q_learning_episode,
-                                #'4RBF-Q-Learning': RBF_Q_learning_episode, 
-                                #'9RBF-Q-Learning': RBF_Q_learning_episode,
+                                ###'FSR-Q-Learning_Alt2': FSR_Q_learning_episode,
+                                '4RBF-Q-Learning': RBF_Q_learning_episode, 
+                                '9RBF-Q-Learning': RBF_Q_learning_episode,
                                 ##'NRBF-Q-Learning': RBF_Q_learning_episode
                                 }
         
@@ -268,9 +268,12 @@ def main():
                                         + "\n" + algorithm_settings_summary),
                                         fps=fps, 
                                         phi_centers=plot_phi_centers)
-                if(save_graphs):
-                    ffig_action_sequence.savefig(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.png"))
+                
                 plt.show(block=True)
+
+                if(save_graphs):
+                    #ffas_anim.save(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.gif"), writer='imagemagick', fps=fps)
+                    ffig_action_sequence.savefig(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.png"))
             if(enable_last_action_sequence_plots):
                 # Plot the last action sequence
                 last_action_sequence = training_data[-1][0]
@@ -281,22 +284,40 @@ def main():
                                         + "\n" + algorithm_settings_summary),
                                         fps=fps,
                                         phi_centers=plot_phi_centers)
-                if(save_graphs):
-                    lfig_action_sequence.savefig(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.png"))
+                
                 plt.show(block=True)
+                
+                if(save_graphs):
+                    #lfas_anim.save(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.gif"), writer='imagemagick', fps=fps)
+                    lfig_action_sequence.savefig(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.png"))
             if(save_training_data):
                 print(f"Saving training data for {algorithm_name}...")
-                save_training_data_to_csv(os.path.join(save_directory, f"training_data_{algorithm_name}.csv"), training_data)
-                save_training_data_set_to_csv(os.path.join(save_directory, f"total_rewards_{algorithm_name}.csv"), total_rewards, "Total Rewards")
-                save_training_data_set_to_csv(os.path.join(save_directory, f"steps_taken_{algorithm_name}.csv"), steps_taken, "Steps Taken")
-                save_training_data_set_to_csv(os.path.join(save_directory, f"weights_history{algorithm_name}.csv"), weights_history, "Weights")
-                save_training_data_set_to_csv(os.path.join(save_directory, f"raw_action_sequence_history_{algorithm_name}.csv"), raw_action_sequence_history, "Action Sequence")
+
+                full_directory = os.path.join(save_directory, "full_data")
+                os.makedirs(full_directory, exist_ok=True)
+                rewards_directory = os.path.join(save_directory, "rewards")
+                os.makedirs(rewards_directory, exist_ok=True)
+                steps_directory = os.path.join(save_directory, "steps")
+                os.makedirs(steps_directory, exist_ok=True)
+                weights_directory = os.path.join(save_directory, "weights")
+                os.makedirs(weights_directory, exist_ok=True)
+                raw_action_sequence_directory = os.path.join(save_directory, "raw_action_sequence")
+                os.makedirs(raw_action_sequence_directory, exist_ok=True)
+                interpreted_action_sequence_directory = os.path.join(save_directory, "interpreted_action_sequence")
+                os.makedirs(interpreted_action_sequence_directory, exist_ok=True)
+
+                save_training_data_to_csv(os.path.join(full_directory, f"training_data_{algorithm_name}.csv"), training_data)
+                save_training_data_set_to_csv(os.path.join(rewards_directory, f"total_rewards_{algorithm_name}.csv"), total_rewards, "Total Rewards")
+                save_training_data_set_to_csv(os.path.join(steps_directory, f"steps_taken_{algorithm_name}.csv"), steps_taken, "Steps Taken")
+                save_training_data_set_to_csv(os.path.join(weights_directory, f"weights_history{algorithm_name}.csv"), weights_history, "Weights")
+                save_training_data_set_to_csv(os.path.join(raw_action_sequence_directory, f"raw_action_sequence_history_{algorithm_name}.csv"), raw_action_sequence_history, "Action Sequence")
                 interpreted_action_sequence_history = []
 
                 for action_sequence in raw_action_sequence_history:
                     interpreted_action_sequence = interpret_action_sequence(action_sequence, actions)
                     interpreted_action_sequence_history.append(interpreted_action_sequence)
-                save_training_data_set_to_csv(os.path.join(save_directory, f"interpreted_action_sequence_history_{algorithm_name}.csv"), interpreted_action_sequence_history, "Action Sequence")
+                
+                save_training_data_set_to_csv(os.path.join(interpreted_action_sequence_directory, f"interpreted_action_sequence_history_{algorithm_name}.csv"), interpreted_action_sequence_history, "Action Sequence")
     
         #print(global_steps_data)
         #print(global_rewards_data)
