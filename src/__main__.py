@@ -53,7 +53,7 @@ def main():
         enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
         # Q-learning Settings
-        episodes = 200 # Number of episodes to train the agent
+        episodes = 60 # Number of episodes to train the agent
         alpha = 0.15 # Learning rate, how much the agent learns from new information
         gamma = 0.9 # Discount factor, how much the agent values future rewards
         epsilon = 0.05 # Exploration rate, how often the agent explores instead of exploiting
@@ -64,16 +64,16 @@ def main():
         # Q-Lambda Settings (uses ^^^ settings)
         lambda_ = 0.5 # Lambda value for Q-Lambda learning
 
-        # Enable recording of action sequence, total rewards, steps taken, and Q-table history
+        # Enable recording of action sequence, total rewards, steps taken, and weights history
         enable_record_set_1 = [True, True, True, True] # Applies to first and last episode
         enable_record_set_2 = [True, True, True, True] # Applies to everything between first and last episode
         
         # Plotting Settings
         fps = 0 # Frames per second for the plot animation, disables animation at 0
 
-        enable_q_table_plots = False # Enable Q-table plots
-        enable_episode_plots = False # Enable episode plots such as rewards/steps over time
-        enable_first_action_sequence_plots = False 
+        enable_q_table_plots = False # Enable weights plots
+        enable_episode_plots = False # Enable individual episode plots such as rewards/steps over time
+        enable_first_action_sequence_plots = True 
         enable_last_action_sequence_plots = True
 
         # Summarize training settings for display purposes
