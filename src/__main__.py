@@ -69,7 +69,7 @@ def main():
         enable_record_set_2 = [True, True, True, True] # Applies to everything between first and last episode
         
         # Plotting Settings
-        fps = 0 # Frames per second for the plot animation, disables animation at 0
+        fps = 60 # Frames per second for the plot animation, disables animation at 0
 
         enable_q_table_plots = False # Enable weights plots
         enable_episode_plots = False # Enable individual episode plots such as rewards/steps over time
@@ -261,7 +261,7 @@ def main():
             if(enable_first_action_sequence_plots):
                 # Plot the first action sequence
                 first_action_sequence = training_data[0][0]
-                ffig_action_sequence = plot_action_sequence(first_action_sequence, grid_length, grid_width, 
+                ffig_action_sequence, ffas_anim = plot_action_sequence(first_action_sequence, grid_length, grid_width, 
                                     'First Action Sequence', 
                                     (training_settings_summary
                                     + "\n" + agent_settings_summary
@@ -270,11 +270,11 @@ def main():
                                         phi_centers=plot_phi_centers)
                 if(save_graphs):
                     ffig_action_sequence.savefig(os.path.join(save_directory, f"first_action_sequence_{algorithm_name}.png"))
-
+                plt.show(block=True)
             if(enable_last_action_sequence_plots):
                 # Plot the last action sequence
                 last_action_sequence = training_data[-1][0]
-                lfig_action_sequence = plot_action_sequence(last_action_sequence, grid_length, grid_width, 
+                lfig_action_sequence, lfas_anim = plot_action_sequence(last_action_sequence, grid_length, grid_width, 
                                     'Last Action Sequence', 
                                     (training_settings_summary
                                     + "\n" + agent_settings_summary
@@ -283,7 +283,7 @@ def main():
                                         phi_centers=plot_phi_centers)
                 if(save_graphs):
                     lfig_action_sequence.savefig(os.path.join(save_directory, f"last_action_sequence_{algorithm_name}.png"))
-
+                plt.show(block=True)
             if(save_training_data):
                 print(f"Saving training data for {algorithm_name}...")
                 save_training_data_to_csv(os.path.join(save_directory, f"training_data_{algorithm_name}.csv"), training_data)
@@ -307,6 +307,8 @@ def main():
                             training_settings_summary
                                 + "\n" + agent_settings_summary,
                                     ylabel='Total Reward', xlabel='Episodes')
+        plt.show(block=True)
+
         fig_steps_taken = plot_algorithm_data(global_steps_data, episodes,
                             'Steps Taken per Episode', 
                             training_settings_summary

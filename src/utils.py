@@ -159,6 +159,7 @@ def plot_action_sequence(action_sequence: list = None,
 
     print("Generating action sequence plot...")
 
+    ani = None
     if fps != 0:
         interval = 1000 / fps  # Calculate interval in milliseconds
         num_frames = (num_actions + max(1, int(fps / base_fps)) - 1) // max(1, int(fps / base_fps))  # Calculate the number of frames needed
@@ -177,7 +178,7 @@ def plot_action_sequence(action_sequence: list = None,
     plt.gca().invert_yaxis()
     plt.legend()
 
-    return fig
+    return fig, ani
 
 def plot_q_table(q_table, grid_length, grid_width, actions, title, subtitle=None, figsize=(12, 8), font_size=10, scale=(1.2, 1.2)) -> plt.Figure:
     """
