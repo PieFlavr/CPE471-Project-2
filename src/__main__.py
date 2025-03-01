@@ -52,7 +52,7 @@ def main():
 
         enable_record = np.zeros(4, dtype=bool) # [action_sequence, total_reward, steps_taken, q_table_history]
 
-        # Q-learning Settings
+        # Learning Settings
         episodes = 60 # Number of episodes to train the agent
         alpha = 0.15 # Learning rate, how much the agent learns from new information
         gamma = 0.9 # Discount factor, how much the agent values future rewards
@@ -60,8 +60,6 @@ def main():
         tau = 0.5 # Softmax temperature for softmax selection function
         greedy_cutoff = episodes*(2.0/3.0) # Episode cutoff for full greedy selection function
         #greedy_cutoff = -1 #No Greedy Cutoff
-
-        # Q-Lambda Settings (uses ^^^ settings)
         lambda_ = 0.5 # Lambda value for Q-Lambda learning
 
         # Enable recording of action sequence, total rewards, steps taken, and weights history

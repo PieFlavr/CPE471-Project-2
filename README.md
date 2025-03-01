@@ -1,31 +1,34 @@
 # Grid World Reinforcement Learning
 
 ## Overview
-This project implements a Grid World environment for reinforcement learning algorithms. The environment is a grid where an agent learns to navigate from a starting position to a goal position while maximizing rewards and minimizing penalties. The project includes implementations of Q-Learning and Q-Lambda algorithms.
+This project implements a Grid World environment for reinforcement learning algorithms. The environment is a grid where an agent learns to navigate from a starting position to a goal position while maximizing rewards and minimizing penalties via a wide variety of algorithms.
 
 ## Features
-- **Grid World Environment**: A customizable grid where the agent learns to navigate.
-- **Q-Learning Algorithm**: An implementation of the Q-Learning algorithm for reinforcement learning.
-- **Q-Lambda Algorithm**: An implementation of the Q-Lambda algorithm for reinforcement learning.
+- **Grid World Environment**: A grid where the agent learns to navigate. The size, starting positionn, goal, and rewards are customizable.
+- **Q-Learning Algorithm**: The basic algorithm for the agent to learn optimal policies.
+- **Q-Lambda Algorithm**: Combines Q-Learning with eligibility traces for faster learning.
+- **RBF Q-Learning Algorithm**: Uses Radial Basis Function (RBF) networks to approximate the Q-values for continuous state spaces. In this case, uses a Gaussian RBF.
+- **FSR Q-Learning Algorithm**: Implements Feature Selection and Reduction (FSR) to improve learning efficiency by reducing the state space. In this case, encodes row, columns, and actions.
 - **Dynamic Reward System**: Rewards and penalties that scale dynamically with the grid size.
 - **Action Recording**: Records action sequences, total rewards, steps taken, and Q-table history.
 - **Plotting**: Visualizes Q-tables, episode rewards, steps taken, and action sequences.
-- **CSV Export**: Exports training data, rewards, steps, and action sequences to CSV files.
+- **Plot Animations**: Creates animated plots to show the progression of the agent's learning over time.
+- **CSV Export**: Exports training data, rewards, steps, plots, and action sequences to CSV files.
 
 ## Project Submission Files
-The data files analyzed in the report are organized in a folder named `project_data`. The report itself is a .pdf file in the main directory named `Pinto CS471 - Project 1 Report.pd`. The `project_data` folder includes the training data for two different grid sizes using both Q-Learning and Q-Lambda algorithms:
+The data files analyzed in the report are organized in a folder named `project_data`. The report itself is a .pdf file in the main directory named `Pinto CPE471 - Project 2 Report.pdf`. The `project_data` folder includes only training data for a **5x5 Grid**, but includes all necessary algorithms.
 
 - **5x5 Grid**:
-    - Q-Learning Images
-    - Q-Learning Training Data
-    - Q-Lambda Images
-    - Q-Lambda Training Data
-
-- **10x10 Grid**:
-    - Q-Learning Images
-    - Q-Learning Training Data
-    - Q-Lambda Images
-    - Q-Lambda Training Data
+    - First Action Sequence Images
+    - Last Action Sequence Images
+    - Steps Taken Comparison Images
+    - Total Rewards Comparison Images
+    - Full Data CSVs
+    - Interpreted Action Sequence CSVs
+    - Raw Action Sequence CSVs
+    - Reward CSVs
+    - Steps CSVs
+    - Weights CSVs
 
 ## Dependencies
 This project requies a **Python** version of 3.12.9 or higher to run.
@@ -52,12 +55,14 @@ Once the projects starts, by default, it will in sequence:
 6. **Export Data**: Save the recorded training data, rewards, steps, and action sequences to CSV files. By default this is exported to the "training_data" folder.
 7. **Repeat Until Done**: Will repeat the previous steps per algorithm specified to run until complete! 
 
-## Demonstration
-Here are two demonstration videos on how to run it and how it should look like...
+## [OLD] Demonstration
+Here are two old demonstration videos from `Project 1` on how to run it and how it should look like...
 
 **5x5 DEMO:** https://youtu.be/a9IlX-IIqPI
 
 **10x10 DEMO:** https://youtu.be/QAEhNdgtyeM
+
+While the code and plotting is outdated, the general principle of starting the same. 
 
 ## Configuration
 The main configuration settings for the Grid World environment and reinforcement learning algorithms can be found in the `main` function. Below is a list of settings that you can customize:
@@ -74,24 +79,26 @@ The main configuration settings for the Grid World environment and reinforcement
 - **Learning Settings**:
   - `learning_algorithms`: Dictionary of learning algorithms to use.
   - `enable_learning_algorithms`: List of booleans to enable/disable specific learning algorithms.
-- **Q-learning Settings**:
+- **Learning Settings**:
   - `episodes`: Number of training episodes.
   - `alpha`: Learning rate for Q-learning updates.
   - `gamma`: Discount factor for future rewards.
   - `epsilon`: Exploration rate for the agent's actions.
-- **Q-Lambda Settings**:
-  - `lambda_value`: Lambda value for Q-Lambda learning.
+  - `tau`: Temperature for softmax action selection.
+  - `greedy_cutoff`: Episode number cutoff for full greedy selection. At -1, is disabled.
+  - `lambda_`: Lambda value for eligibiliy decay. 
 - **Recording Settings**:
   - `enable_record_set_1`: Flags to enable recording for the first and last episode.
   - `enable_record_set_2`: Flags to enable recording for episodes between the first and last.
 - **Plotting Settings**:
-  - `fps`: Frames per second for the plot animation.
+  - `fps`: Frames per second for the plot animation. At 0, is disabled.
   - `enable_q_table_plots`: Enable/disable Q-table plots.
   - `enable_episode_plots`: Enable/disable episode plots such as rewards/steps over time.
   - `enable_first_action_sequence_plots`: Enable/disable plotting of the first action sequence.
   - `enable_last_action_sequence_plots`: Enable/disable plotting of the last action sequence.
 - **File Saving Settings**:
   - `save_training_data`: Enable/disable saving of training data.
+  - `save_graphs`: Enable/disable saving of plot and graphs.
   - `save_directory`: Directory to save the CSV files.
 
 You can modify these settings in the `main` function to suit your specific requirements. In future projects, the hope is to be able to read a JSON file with all these settings in one place as opposed to modifying the code itself.
