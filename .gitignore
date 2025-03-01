@@ -172,3 +172,4 @@ cython_debug/
 
 # Training Data Contents
 training_data/*
+!training_data/.gitkeep
