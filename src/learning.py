@@ -152,7 +152,7 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
     Returns:
         Tuple[list, float, int, list]: _description_
     """
-    
+    step_limit = 30000
     # Check if any of the parameters are None
     if grid_world is None:
         raise ValueError("GridWorld cannot be None!")
@@ -195,13 +195,56 @@ def FSR_Q_learning_episode(grid_world: GridWorld = None,
         action_sequence.append(action) if enable_record[0] else None
         steps_taken += 1 if enable_record[1] else None
         total_reward += reward if enable_record[2] else None
-        #print (f"\033[A FSR State: {fsr_state}, Action: {action}, Reward: {reward} \033[A")
+
+        # In case of possible infinite loop, start printing debug information
+        if steps_taken > step_limit*0.9:
+            print(f"")
+            print (f"FSR State: {fsr_state}")
+        if steps_taken > step_limit*0.9 + 1:
+            print("\033[10F\033[J", end="")
+
+        if steps_taken > step_limit*0.95:
+            print("Approaching infinite loop")
+            print("State: ", state)
+            print("Action: ", action)
+            print("Reward: ", reward)
+            print("Total Reward: ", total_reward)
+            print("Episode: ", episode)
+
+            # Print Decoded FSR State
+            action_offset = (grid_world._grid_dim[0] + grid_world._grid_dim[1]) * action
+            print(f"Decoded FSR State for Action {action}:")
+            print(f"X POSTIION: ", end=" ")
+            for i in range(action_offset, action_offset + grid_world._grid_dim[0],1):
+                print(f"{fsr_state[i]:.0f}", end=" ")
+            print(f"")
+            print(f"Y POSTIION: ", end=" ")
+            for i in range(action_offset + grid_world._grid_dim[0], action_offset + grid_world._grid_dim[1] + grid_world._grid_dim[0],1):
+                print(f"{fsr_state[i]:.0f}", end=" ")
+            print(f"")
+
+            # Print Decoded FSR Weights
+            print(f"Decoded FSR State for Action {action}:")
+            print(f"X POSTIION: ", end=" ")
+            for i in range(action_offset, action_offset + grid_world._grid_dim[0],1):
+                print(f"{weights[i]:.2f}", end=" ")
+            print(f"")
+            print(f"Y POSTIION: ", end=" ")
+            for i in range(action_offset + grid_world._grid_dim[0], action_offset + grid_world._grid_dim[1] + grid_world._grid_dim[0],1):
+                print(f"{weights[i]:.2f}", end=" ")
+            print(f"")
 
         next_state = grid_world.get_state()[1]  # Get the next state of the environment
 
         next_fsr_state = generate_next_FSR(next_state, grid_world = grid_world, actions = actions)
 
         Q_learning_FSR_update(fsr_state, next_fsr_state, action, actions, reward, weights, alpha, gamma)
+
+        # In case of infinite loop, break the episode
+        if steps_taken > step_limit:
+            print("Infinite loop!!!")
+            print("Something Went Horribly Wrong, Skipping Episode!")
+            break
 
     final_q_table = weights.copy() if enable_record[3] else None
 

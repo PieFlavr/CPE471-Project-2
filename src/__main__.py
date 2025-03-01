@@ -18,8 +18,8 @@ def main():
         print("Hello, World!")
         
         # Environment/Grid World Settings
-        grid_length = 25
-        grid_width = 25
+        grid_length = 5
+        grid_width = 5
         reward_vector = [grid_length*grid_width, -1, -5] # In order, the reward for reaching the goal, moving, and an invalid move
         # ^^^ scales dynamically with the grid size
         goal_position = (grid_length-1,grid_width-1) # If None, default is bottom right corner
@@ -73,15 +73,17 @@ def main():
 
         enable_q_table_plots = False # Enable Q-table plots
         enable_episode_plots = False # Enable episode plots such as rewards/steps over time
-        enable_first_action_sequence_plots = False 
+        enable_first_action_sequence_plots = True 
         enable_last_action_sequence_plots = True
 
         # Summarize training settings for display purposes
         training_settings_summary = f"{grid_length}x{grid_width} Grid World"
-        training_settings_summary += f"\nEpisodes: {episodes}, Alpha: {alpha}, Gamma: {gamma}, Epsilon: {epsilon}"
-        training_settings_summary += f"\nRewards: {reward_vector}"
-        
-        agent_settings_summary = f"Agent Start: (0, 0), Goal: ({goal_position[0]}, {goal_position[1]})"
+        training_settings_summary += f"\nEpisodes: {episodes} "
+        training_settings_summary += f"Alpha: {alpha}, Gamma: {gamma}, "
+        training_settings_summary += f"Epsilon: {epsilon}, Tau: {tau} "
+        training_settings_summary += f"Lambda: {lambda_value}, Sigma: {sigma} "
+        agent_settings_summary = f"Agent Start: (0, 0), Goal: ({goal_position[0]}, {goal_position[1]}) "
+        agent_settings_summary += f"Rewards: {reward_vector}"
         algorithm_settings_summary = None
 
         # File Saving Settings
@@ -90,13 +92,13 @@ def main():
         print(f"Training data will be saved to {save_directory}.")
 
         learning_algorithms = {
-                                #'Q-Learning': Q_learning_episode, 
-                                #'Q-Lambda': Q_lambda_episode, 
+                                'Q-Learning': Q_learning_episode, 
+                                'Q-Lambda': Q_lambda_episode, 
                                 'FSR-Q-Learning': FSR_Q_learning_episode,
-                                'FSR-Q-Learning_Alt': FSR_Q_learning_episode,
-                                'FSR-Q-Learning_Alt2': FSR_Q_learning_episode,
-                                #'4RBF-Q-Learning': RBF_Q_learning_episode, 
-                                #'9RBF-Q-Learning': RBF_Q_learning_episode,
+                                #'FSR-Q-Learning_Alt': FSR_Q_learning_episode,
+                                #'FSR-Q-Learning_Alt2': FSR_Q_learning_episode,
+                                '4RBF-Q-Learning': RBF_Q_learning_episode, 
+                                '9RBF-Q-Learning': RBF_Q_learning_episode,
                                 #'NRBF-Q-Learning': RBF_Q_learning_episode
                                 }
         
@@ -105,9 +107,9 @@ def main():
                                         'Q-Lambda': {'selection_function': softmax_Q_selection},
                                         'FSR-Q-Learning': {'selection_function': softmax_FSR_selection},
                                         #'FSR-Q-Learning_Alt': {'selection_function': softmax_FSR_selection,'alpha': 0.01, 'gamma': 0.99}, 
-                                        '4RBF-Q-Learning': {'phi_centers': phi_centers_1, 'selection_function': softmax_P_selection},
-                                        '9RBF-Q-Learning': {'phi_centers': phi_centers_2, 'selection_function': softmax_P_selection},
-                                        'NRBF-Q-Learning': {'phi_centers': phi_center_N, 'selection_function': softmax_P_selection}
+                                        '4RBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_centers_1},
+                                        '9RBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_centers_2},
+                                        'NRBF-Q-Learning': {'selection_function': softmax_P_selection, 'phi_centers': phi_center_N}
                                         }
         
         global_learning_arguments = {'grid_world': environment, 'actions': actions, 
@@ -116,7 +118,7 @@ def main():
                                 'function_args': {'weights': None, 'epsilon': epsilon, 'tau': tau, 'greedy_cutoff': greedy_cutoff},
                                 'alpha': alpha, 'gamma': gamma, 'agent_start': agent_start, 
                                 'lambda': lambda_value, 
-                                'sigma': sigma,
+                                'sigma': sigma, 'phi_centers': phi_center_N,
                                 'enable_record': enable_record
                                 }
         
@@ -169,13 +171,9 @@ def main():
             local_learning_arguments['function_args']['weights'] = weights
 
             algorithm_settings_summary = f"Trained w/ {algorithm_name} and "
+            #print(f"Local Learning Arguments: {local_learning_arguments}")
+            algorithm_settings_summary += f"Selection Function: {local_learning_arguments['selection_function'].__name__}"
 
-            if get_key_by_value(algorithm_exclusive_arguments[algorithm_name], local_learning_arguments['selection_function']) == 'selection_function':
-                algorithm_settings_summary += f"Selection Function: {algorithm_exclusive_arguments[algorithm_name]['selection_function'].__name__}"
-            elif get_key_by_value(global_learning_arguments, local_learning_arguments['selection_function']) == 'selection_function':
-                algorithm_settings_summary += f"Selection Function: {global_learning_arguments['selection_function'].__name__}"
-            else:
-                algorithm_settings_summary += "Unknown Selection Function"
 
             print(f"{training_settings_summary}\n{agent_settings_summary}\n{algorithm_settings_summary}")
 
@@ -190,10 +188,10 @@ def main():
                 
                 # Run a single episode of the learning algorithm
 
-                action_sequence, total_reward, steps_taken, q_table_history = algorithm_function(episode = episode, **local_learning_arguments)
+                action_sequence, total_reward, steps_taken, weights_history = algorithm_function(episode = episode, **local_learning_arguments)
                 #print(weights)
                 
-                training_data.append([action_sequence, total_reward, steps_taken, q_table_history])
+                training_data.append([action_sequence, total_reward, steps_taken, weights_history])
                 print(f"Completed!!! Total Reward: {total_reward}, Steps Taken: {steps_taken}.")
 
             print(f"{algorithm_name} Training completed.")
@@ -206,7 +204,7 @@ def main():
 
             # Extract total rewards and steps taken per episode
             raw_action_sequence_history = [data[0] for data in training_data]
-            q_table_history = [data[3] for data in training_data]
+            weights_history = [data[3] for data in training_data]
             total_rewards = [data[1] for data in training_data]
             steps_taken = [data[2] for data in training_data]
 
@@ -247,8 +245,12 @@ def main():
                                     + "\n" + agent_settings_summary
                                     + "\n" + algorithm_settings_summary,
                                         ylabel='Steps Taken', label='Steps Taken', color='orange')
+                
+            plot_phi_centers = None
+   
+            if((algorithm_name in algorithm_exclusive_arguments) and ('phi_centers' in algorithm_exclusive_arguments[algorithm_name])):
+                plot_phi_centers = algorithm_exclusive_arguments[algorithm_name]['phi_centers']
 
-            plot_phi_centers = algorithm_exclusive_arguments[algorithm_name]['phi_centers'] if 'phi_centers' in algorithm_exclusive_arguments[algorithm_name] else None
             if(enable_first_action_sequence_plots):
                 # Plot the first action sequence
                 first_action_sequence = training_data[0][0]
@@ -276,7 +278,7 @@ def main():
                 save_training_data_to_csv(os.path.join(save_directory, f"training_data_{algorithm_name}.csv"), training_data)
                 save_training_data_set_to_csv(os.path.join(save_directory, f"total_rewards_{algorithm_name}.csv"), total_rewards, "Total Rewards")
                 save_training_data_set_to_csv(os.path.join(save_directory, f"steps_taken_{algorithm_name}.csv"), steps_taken, "Steps Taken")
-                save_training_data_set_to_csv(os.path.join(save_directory, f"q_table_history_{algorithm_name}.csv"), q_table_history, "Q-table")
+                save_training_data_set_to_csv(os.path.join(save_directory, f"weights_history{algorithm_name}.csv"), weights_history, "Weights")
                 save_training_data_set_to_csv(os.path.join(save_directory, f"raw_action_sequence_history_{algorithm_name}.csv"), raw_action_sequence_history, "Action Sequence")
                 interpreted_action_sequence_history = []
 

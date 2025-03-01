@@ -47,10 +47,14 @@ def get_key_by_value(dictionary, target_value):
     Returns:
         any: The key associated with the target value, or None if the value is not found.
     """
-    for key, value in dictionary.items():
-        if value == target_value:
-            return key
-    return None
+
+    try:
+        for key, value in dictionary.items():
+            if value == target_value:
+                return key
+        return None
+    except Exception as e:
+        print(f"Error: {e}")
 
 def q_table_to_2d_array(q_table, grid_length, grid_width):
     """
@@ -278,11 +282,11 @@ def save_training_data_to_csv(filename, training_data):
             - Action Sequence (list): The sequence of actions taken.
             - Total Reward (float): The total reward obtained.
             - Steps Taken (int): The number of steps taken.
-            - Q-Table (np.ndarray): The Q-table at the end of the episode.
+            - Weights (np.ndarray): The weights at the end of the episode.
     """
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(['Episode', 'Action Sequence', 'Total Reward', 'Steps Taken', 'Q-Table'])
+        writer.writerow(['Episode', 'Action Sequence', 'Total Reward', 'Steps Taken', 'Weights'])
         for episode, data in enumerate(training_data):
             writer.writerow([episode + 1, data[0], data[1], data[2], data[3]])
 
